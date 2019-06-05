@@ -18,7 +18,7 @@ setup(
     keywords = "",
     url = "https://github.com/canismarko/franklin",
     packages=['franklin'],
-    long_description=read('README'),
+    long_description=read('README.rst'),
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Topic :: Utilities",
