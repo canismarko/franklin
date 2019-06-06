@@ -19,6 +19,9 @@ setup(
     url = "https://github.com/canismarko/franklin",
     packages=['franklin'],
     long_description=read('README.rst'),
+    entry_points = {
+        'console_scripts': ['fetch-doi=franklin.fetch_doi:main'],
+    },
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Topic :: Utilities",
