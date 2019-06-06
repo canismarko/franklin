@@ -15,6 +15,8 @@
 
 import unittest
 
+import bibtexparser
+
 from franklin import Article, exceptions
 
 class ArticlesTests(unittest.TestCase):
@@ -34,11 +36,16 @@ class ArticlesTests(unittest.TestCase):
         article = Article(doi=self.perspective_paper_doi)
         # pdf = article.pdf()
         # self.assertEqual(pdf, '')
-
-    def test_metadata(self):
+    
+    def test_bibtex(self):
         article = Article(doi=self.perspective_paper_doi)
-        print(article.metadata())
-        assert False
+        bibtex = article.bibtex()
+        bibtex = bibtexparser.loads(bibtex)
+        self.assertEqual(len(bibtex.entries), 1)
+        bibdict = bibtex.entries[0]
+        self.assertEqual(bibdict['doi'], self.perspective_paper_doi)
+        self.assertEqual(bibdict['author'], 'Mark Wolf and Brian M. May and Jordi Cabana')
+        self.assertEqual(bibdict['publisher'], 'American Chemical Society ({ACS})')
     
     # def test_author(self):
     #     article = Article(doi=self.perspective_paper_doi)

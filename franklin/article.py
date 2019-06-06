@@ -13,7 +13,11 @@
 # You should have received a copy of the GNU General Public License
 # along with Franklin.  If not, see <https://www.gnu.org/licenses/>.
 
+import re
 import requests
+import time
+
+import bibtexparser
 
 from .exceptions import DOIError
 
@@ -35,11 +39,13 @@ class Article():
         else:
             raise DOIError(f"Unexpected DOI error {response}")
         return url
-
-    def metadata(self):
-        """Retrieve the meta-data for the article."""
-        citation = requests.get(f'https://pubs.acs.org/action/showCitFormats?href={self.url()}')
-        print(citation.content)
+    
+    def bibtex(self):
+        headers = {
+            'Accept': 'application/x-bibtex',
+        }
+        bibtex = requests.get(f'https://dx.doi.org/{self.doi}', headers=headers)
+        return bibtex.text
     
     def download_pdf(self):
         """Retrieve the PDF for the given article resource."""
