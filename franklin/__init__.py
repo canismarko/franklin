@@ -1,1 +1,1 @@
-from .article import Article
+from .article import Article, journal_abbreviation

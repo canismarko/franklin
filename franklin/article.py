@@ -16,10 +16,47 @@
 import re
 import requests
 import time
+import functools
+import logging
 
 import bibtexparser
 
 from .exceptions import DOIError
+
+
+log = logging.getLogger(__name__)
+
+
+def journal_abbreviation(journal):
+    """Retrieve abbreviated journal name from CASSI."""
+    # Ask for a validation code for having accepted the terms of service
+    cookies = {'UserAccepted': 'YES'}
+    response = requests.get('https://cassi.cas.org/search.jsp', cookies=cookies)
+    content = str(response.content)
+    if 'You have to enable JavaScript' in content:
+        raise exceptions.CASSIError("Could not accept CASSI terms.")
+    # Extract the validation code from the response
+    r_str = '<input type="hidden" name="c" value="([^"]+)"'
+    match = re.search(r_str, content)
+    if match:
+        c_code = match.group(1)
+    else:
+        raise exceptions.CASSIError("Could not extract CASSI terms validation code.")
+    # Perform the actual search
+    response = requests.post('https://cassi.cas.org/searching.jsp',
+                             data={'searchIn': 'titles',
+                                   'searchFor': journal,
+                                   'exactMatch': 'on',
+                                   'c': 'WIy460-R_DY'})
+    # Search the return response for the abbreviated title
+    r_str = '<tr><td class="name">Abbreviated Title</td><td class="value">([A-Za-z0-9_. ]+)</td></tr>'
+    match = re.search(r_str, str(response.content))
+    if match:
+        abbr = match.group(1)
+    else:
+        log.warning("Could not abbreviate journal '%s'.", journal)
+        abbr = journal
+    return abbr
 
 class Article():
     """A publish research article."""
@@ -30,28 +67,88 @@ class Article():
     
     def url(self):
         """Retrieve the actual URL given the DOI."""
-        response = requests.get(f'https://doi.org/api/handles/{self.doi}').json()
+        response = requests.get('https://doi.org/api/handles/{doi}'.format(doi=self.doi)).json()
         response_code = response['responseCode']
         if response_code == 1:
             url = response['values'][0]['data']['value']
         elif response_code == 100:
-            raise DOIError(f"DOI not found: {response['handle']}")
+            raise DOIError("DOI not found: {}".format(response['handle']))
         else:
-            raise DOIError(f"Unexpected DOI error {response}")
+            raise DOIError("Unexpected DOI error {}".format(response))
         return url
     
-    def bibtex(self):
+    @functools.lru_cache()
+    def _bibtex(self):
+        """Load the raw bibtex from DOI server."""
         headers = {
             'Accept': 'application/x-bibtex',
         }
-        bibtex = requests.get(f'https://dx.doi.org/{self.doi}', headers=headers)
+        bibtex = requests.get('https://dx.doi.org/{doi}'.format(doi=self.doi), headers=headers)
         return bibtex.text
     
-    def download_pdf(self):
-        """Retrieve the PDF for the given article resource."""
-        pdf_url = f"https://pubs.acs.org/doi/pdf/{self.doi}"
+    def metadata(self):
+        """Retrieve metadata about this article and return as a dictionary."""
+        bibtex = self._bibtex()
+        metadata = bibtexparser.loads(bibtex)
+        assert len(metadata.entries) == 1
+        metadata = metadata.entries[0]
+        del metadata['ID']
+        return metadata
+    
+    def bibtex(self, id=None, abbreviate_journal=True):
+        """Prepare bibtex entry for this article.
+        
+        Parameters
+        ==========
+        id : str
+          The entry ID to use. If omitted, ``self.default_id()`` will
+          be used.
+        abbreviate_journal : bool
+          If true, the abbreviated journal name will be retrieved from
+          CASSI.
+        
+        Returns
+        =======
+        bibtex : str
+          The prepared bibtex entry.
+        
+        """
+        metadata = self.metadata()
+        metadata['ID'] = id if id is not None else self.default_id()
+        # Abbreviate the journal name
+        if abbreviate_journal:
+            metadata['journal'] = journal_abbreviation(metadata['journal'])
+        # Convert to bibtex
+        db = bibtexparser.bibdatabase.BibDatabase()
+        db.entries = [metadata]
+        bibtex = bibtexparser.dumps(db)
+        return bibtex
+    
+    def download_pdf(self, fp):
+        """Retrieve the PDF for the given article resource.
+        
+        Parameters
+        ==========
+        fp : File-like object
+          Will receive the PDF contents. Must be writable and in a
+          binary mode.
+        
+        """
+        pdf_url = "https://pubs.acs.org/doi/pdf/{doi}".format(doi=self.doi)
         pdf_response = requests.get(pdf_url)
         # Save the PDF
-        print(pdf_response.content)
-        print(pdf_url)
-
+        fp.write(pdf_response.content)
+    
+    def authors(self):
+        metadata = self.metadata()
+        authors = metadata['author'].split(' and ')
+        return authors
+    
+    def default_id(self):
+        """Prepare a default ID suitable for bibtex."""
+        first_author = self.authors()[0]
+        last_name = first_author.split(' ')[-1].lower()
+        default_id = '{last_name}{year}'.format(last_name=last_name,
+                                                year=self.metadata()['year'])
+        return default_id
+        

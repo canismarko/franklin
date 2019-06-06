@@ -14,10 +14,20 @@
 # along with Franklin.  If not, see <https://www.gnu.org/licenses/>.
 
 import unittest
+import io
 
 import bibtexparser
 
-from franklin import Article, exceptions
+from franklin import Article, journal_abbreviation, exceptions
+
+
+class CASSITests(unittest.TestCase):
+    def test_real_journal(self):
+        abbr = journal_abbreviation('Chemistry of Materials')
+        self.assertEqual(abbr, 'Chem. Mater.')
+        # Now try with nonsense journal
+        abbr = journal_abbreviation('Journal of hard knocks')
+        self.assertEqual(abbr, 'Journal of hard knocks')
 
 class ArticlesTests(unittest.TestCase):
     perspective_paper_doi = '10.1021/acs.chemmater.6b05114'
@@ -34,19 +44,43 @@ class ArticlesTests(unittest.TestCase):
     
     def test_pdf(self):
         article = Article(doi=self.perspective_paper_doi)
-        # pdf = article.pdf()
-        # self.assertEqual(pdf, '')
+        output_fp = io.BytesIO()
+        # Retrieve the actual PDF
+        pdf = article.download_pdf(fp=output_fp)
+        # Check that a valid PDF was returned
+        output_fp.seek(0)
+        self.assertEqual(output_fp.read(8).decode(), '%PDF-1.5')
+        # Clean up
+        output_fp.close()
     
     def test_bibtex(self):
         article = Article(doi=self.perspective_paper_doi)
-        bibtex = article.bibtex()
+        bibtex = article.bibtex(abbreviate_journal=True)
         bibtex = bibtexparser.loads(bibtex)
         self.assertEqual(len(bibtex.entries), 1)
         bibdict = bibtex.entries[0]
         self.assertEqual(bibdict['doi'], self.perspective_paper_doi)
         self.assertEqual(bibdict['author'], 'Mark Wolf and Brian M. May and Jordi Cabana')
         self.assertEqual(bibdict['publisher'], 'American Chemical Society ({ACS})')
+        self.assertEqual(bibdict['journal'], 'Chem. Mater.')
+        self.assertEqual(bibdict['year'], '2017')
+        self.assertEqual(bibdict['ID'], 'wolf2017')
+        # Now try with a custom ID
+        new_bibdict = bibtexparser.loads(article.bibtex(id='cabana2017')).entries[0]
+        self.assertEqual(new_bibdict['ID'], 'cabana2017')
     
-    # def test_author(self):
-    #     article = Article(doi=self.perspective_paper_doi)
-    #     self.assertEqual(article.authors[0], 'Mark Wolf')
+    def test_metadata(self):
+        article = Article(doi=self.perspective_paper_doi)
+        metadata = article.metadata()
+        self.assertEqual(metadata['doi'], self.perspective_paper_doi)
+        self.assertNotIn('ID', metadata.keys())
+    
+    def test_author(self):
+        article = Article(doi=self.perspective_paper_doi)
+        self.assertEqual(article.authors()[0], 'Mark Wolf')
+        self.assertEqual(article.authors()[1], 'Brian M. May')
+        self.assertEqual(article.authors()[2], 'Jordi Cabana')
+
+    def test_default_id(self):
+        article = Article(doi=self.perspective_paper_doi)
+        self.assertEqual(article.default_id(), 'wolf2017')
