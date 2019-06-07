@@ -21,7 +21,8 @@ import logging
 
 import bibtexparser
 
-from .exceptions import DOIError
+from .exceptions import DOIError, PDFNotFoundError
+from .publishers import get_publisher
 
 
 log = logging.getLogger(__name__)
@@ -89,10 +90,11 @@ class Article():
     def metadata(self):
         """Retrieve metadata about this article and return as a dictionary."""
         bibtex = self._bibtex()
-        metadata = bibtexparser.loads(bibtex)
-        if len(metadata.entries) != 1:
-            raise DOIError("Found bibtex {} entries for {}".format(len(metadata.entries), self.doi))
-        metadata = metadata.entries[0]
+        bibdb = bibtexparser.loads(bibtex)
+        if len(bibdb.entries) != 1:
+            msg = "Found bibtex {} entries for {}".format(len(bibdb.entries), self.doi)
+            raise DOIError(msg)
+        metadata = bibdb.entries[0]
         del metadata['ID']
         return metadata
     
@@ -135,10 +137,11 @@ class Article():
           binary mode.
         
         """
-        pdf_url = "https://pubs.acs.org/doi/pdf/{doi}".format(doi=self.doi)
-        pdf_response = requests.get(pdf_url)
+        metadata = self.metadata()
+        get_pdf = get_publisher(metadata['publisher'])
+        pdf_response = get_pdf(doi=self.doi, url=self.url())
         # Save the PDF
-        fp.write(pdf_response.content)
+        fp.write(pdf_response)
     
     def authors(self):
         metadata = self.metadata()

@@ -10,3 +10,7 @@ class DuplicateDOIError(RuntimeError):
 
 class BibtexFileNotFoundError(FileNotFoundError):
     pass
+
+
+class PDFNotFoundError(FileNotFoundError):
+    pass
