@@ -117,3 +117,13 @@ class FetchDOITests(TestCase):
             fetch_doi.fetch_doi(doi='10.1021/acs.chemmater.6b05114',
                                 pdf_dir='papers/',
                                 bibfile=bibfile)
+    
+    def test_main(self):
+        with open('refs.bib', 'w+') as f:
+            f.write(' ')
+        os.mkdir('./papers/')
+        try:
+            fetch_doi.main(['10.1021/acs.chemmater.6b05114'])
+        finally:
+            shutil.rmtree('./papers/')
+            os.remove('refs.bib')

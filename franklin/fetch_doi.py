@@ -147,7 +147,7 @@ def fetch_doi(doi, bibfile, pdf_dir, retrieve_pdf=True):
     return new_id
 
 
-def main():
+def main(argv=None):
     # Parse the command line arguments
     parser = argparse.ArgumentParser(
         description='Fetch an article by its digital object identifier'
@@ -160,7 +160,7 @@ def main():
     parser.add_argument('-b', '--bibtex-file', dest='bibfile', default='./refs.bib',
                         metavar='FILE',
                         help='will add the new bibtex entry to this file')
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     doi = args.doi
     bibfile = args.bibfile
     pdf_dir = args.pdf_dir

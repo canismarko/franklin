@@ -90,7 +90,8 @@ class Article():
         """Retrieve metadata about this article and return as a dictionary."""
         bibtex = self._bibtex()
         metadata = bibtexparser.loads(bibtex)
-        assert len(metadata.entries) == 1
+        if len(metadata.entries) != 1:
+            raise DOIError("Found bibtex {} entries for {}".format(len(metadata.entries), self.doi))
         metadata = metadata.entries[0]
         del metadata['ID']
         return metadata
