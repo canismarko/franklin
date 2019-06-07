@@ -10,7 +10,7 @@ def read(fname):
 
 setup(
     name = "franklin",
-    version = "0.1",
+    version = read('VERSION'),
     author = "Mark Wolfman",
     author_email = "canismarko@gmail.com",
     description = ("Retrieve scientific papers and manage associated citations.",),
@@ -19,6 +19,9 @@ setup(
     url = "https://github.com/canismarko/franklin",
     packages=['franklin'],
     long_description=read('README.rst'),
+    install_requires=[
+        'bibtexparser', 'requests',
+    ],
     entry_points = {
         'console_scripts': ['fetch-doi=franklin.fetch_doi:main'],
     },

@@ -12,7 +12,7 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
+import os
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
@@ -23,10 +23,12 @@ project = 'Franklin'
 copyright = '2019, Mark Wolfman'
 author = 'Mark Wolfman'
 
+def read(fname):
+    return open(os.path.join(os.path.dirname(__file__), fname)).read()
 # The short X.Y version
-version = ''
+version = read('../VERSION')
 # The full version, including alpha/beta/rc tags
-release = '0.1'
+release = read('../VERSION')
 
 
 # -- General configuration ---------------------------------------------------
@@ -76,7 +78,7 @@ pygments_style = 'sphinx'
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+html_theme = 'nature'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the

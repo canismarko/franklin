@@ -1,3 +1,7 @@
+# Temporary test files
+refs.bib
+papers/
+
 # Emacs and temporary files
 *~
 
