@@ -148,7 +148,7 @@ def fetch_doi(doi, bibfile, pdf_dir, retrieve_pdf=True):
 
 
 def main(argv=None):
-    # Parse the command line arguments
+    # Prepare the command line arguments
     parser = argparse.ArgumentParser(
         description='Fetch an article by its digital object identifier'
     )
@@ -160,16 +160,20 @@ def main(argv=None):
     parser.add_argument('-b', '--bibtex-file', dest='bibfile', default='./refs.bib',
                         metavar='FILE',
                         help='will add the new bibtex entry to this file')
+    parser.add_argument('--no-pdf', dest='retrieve_pdf', action='store_false',
+                        help="don't attempt to download the article as a PDF")
+    # Parse the command line arguments
     args = parser.parse_args(argv)
     doi = args.doi
     bibfile = args.bibfile
     pdf_dir = args.pdf_dir
+    retrieve_pdf = args.retrieve_pdf
     # Check if the file exists
     if not os.path.exists(bibfile):
         raise exceptions.BibtexFileNotFoundError("Cannot find bibtex file: {}".format(bibfile))
     # Do the actual DOI fetching
     with open(bibfile, mode='a+') as bibfp:
-        new_id = fetch_doi(doi=doi, bibfile=bibfp, pdf_dir=pdf_dir)
+        new_id = fetch_doi(doi=doi, bibfile=bibfp, pdf_dir=pdf_dir, retrieve_pdf=retrieve_pdf)
     print("Saved entry as {} ({}.pdf)".format(new_id, os.path.join(pdf_dir, new_id)))
 
 

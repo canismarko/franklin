@@ -92,7 +92,7 @@ class Article():
         bibtex = self._bibtex()
         bibdb = bibtexparser.loads(bibtex)
         if len(bibdb.entries) != 1:
-            msg = "Found bibtex {} entries for {}".format(len(bibdb.entries), self.doi)
+            msg = "Found {} bibtex entries for DOI: '{}'".format(len(bibdb.entries), self.doi)
             raise DOIError(msg)
         metadata = bibdb.entries[0]
         del metadata['ID']
