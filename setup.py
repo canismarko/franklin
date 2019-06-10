@@ -13,7 +13,7 @@ setup(
     version = read('VERSION'),
     author = "Mark Wolfman",
     author_email = "canismarko@gmail.com",
-    description = ("Retrieve scientific papers and manage associated citations.",),
+    description = "Retrieve scientific papers and manage associated citations.",
     license = "GPLv3",
     keywords = "",
     url = "https://github.com/canismarko/franklin",
@@ -28,6 +28,6 @@ setup(
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Topic :: Utilities",
-        "LICENSE :: OSI APPROVED :: GNU GENERAL PUBLIC LICENSE V3 (GPLV3)",
+        "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     ],
 )

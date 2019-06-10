@@ -39,7 +39,7 @@ def is_duplicate(doi, bib_entries):
       False.
     
     """
-    is_duplicate = doi in [e['doi'] for e in bib_entries]
+    is_duplicate = doi in [e.get('doi') for e in bib_entries]
     return is_duplicate
 
 
@@ -138,9 +138,19 @@ def fetch_doi(doi, bibfile, pdf_dir, retrieve_pdf=True):
                                 pdfs=os.listdir(pdf_dir),
                                 bibtex_entries=bibdb.entries)
     # Download the PDF
-    pdffile = os.path.join(pdf_dir, '{}.pdf'.format(new_id))
-    with open(pdffile, 'wb') as pdffp:
-        article.download_pdf(fp=pdffp)
+    if retrieve_pdf:
+        pdffile = os.path.join(pdf_dir, '{}.pdf'.format(new_id))
+        try:
+            pdffp = open(pdffile, 'wb')
+            article.download_pdf(fp=pdffp)
+        except:
+            # Delete the file if an exception occurred
+            pdffp.close()
+            os.remove(pdffile)
+            raise
+        else:
+            # Upon successful download, just close the file
+            pdffp.close()
     # Add the bibtex entry to the bibfile
     bibtex = article.bibtex(id=new_id)
     add_bibtex_entry(bibtex, bibfile)

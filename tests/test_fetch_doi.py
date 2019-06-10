@@ -39,6 +39,16 @@ class IsDuplicateTests(TestCase):
                                         bib_entries=self.sample_bibtex)
         self.assertFalse(result)
 
+    def test_no_doi(self):
+        sample_bibtex = [
+            {
+                'ID': 'wolf2017',
+            }
+        ]
+        result = fetch_doi.is_duplicate(doi='gibberish doi',
+                                        bib_entries=sample_bibtex)
+        self.assertFalse(result)
+
 
 class ValidateIDTest(TestCase):
     def test_already_unique_id(self):

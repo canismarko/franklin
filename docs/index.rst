@@ -18,6 +18,8 @@ The following console scripts are available.
    :maxdepth: 2
    :caption: Contents:
 
+   publishers
+
 Installation
 ============
 
@@ -51,6 +53,7 @@ currently supported:
 
 - American Chemical Society (ACS)
 - The Electrochemical Society (ECS)
+- Elsevier
 
 To request support for additional publishers, please `submit an
 issue`_. If possible, include the DOI of an open-access article for

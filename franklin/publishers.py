@@ -16,20 +16,35 @@
 
 import requests
 import re
+import os
+
+import configparser
+
+from .exceptions import PDFNotFoundError, UnknownPublisherError, ConfigError
 
 
-from .exceptions import PDFNotFoundError
+def load_config():
+    """Load the configuration file from disk."""
+    config = configparser.ConfigParser()
+    config['Elsevier'] = {
+        'api_key': '',
+    }
+    # Read the file from disk
+    config.read(os.path.expanduser('~/.franklinrc'))
+    return config
 
 
 def get_publisher(publisher):
     _pub_dict = {
         'American Chemical Society ({ACS})': american_chemical_society,
         'The Electrochemical Society': electrochemical_society,
+        'Elsevier {BV}': elsevier,
     }
     try:
         pub_func = _pub_dict[publisher]
     except KeyError:
-        raise
+        msg = '"{}" (hint: use `--no-pdf` to skip PDF retrieval)'.format(publisher)
+        raise UnknownPublisherError(msg) from None
     return pub_func
 
 
@@ -56,4 +71,33 @@ def electrochemical_society(doi, *args, **kwargs):
     if not re.match('%PDF-([-0-9]+)', pdf_response.text[:8]):
         # Failed, so figure out why
         raise PDFNotFoundError("No PDF for {}".format(doi))
+    return pdf_response.content
+
+
+def elsevier(doi, api_key=None, *args, **kwargs):
+    # Make sure the API key is set
+    if api_key is None:
+        api_key = load_config()['Elsevier']['api_key']
+    # Prepare the API request
+    api_url = "https://api.elsevier.com/content/article/doi/{doi}?"
+    if api_key:
+        api_url += "apiKey={key}&"
+    api_url = api_url.format(doi=doi, key=api_key)
+    headers = {
+        'Accept': 'application/pdf',
+        'apiKey': api_key
+    }
+    pdf_response = requests.get(api_url, headers=headers)
+    # Verify that it's a valid PDF
+    if not re.match('%PDF-([-0-9]+)', pdf_response.text[:8]):
+        if not api_key:
+            # It probably failed because the API key was not saved
+            msg = ("No API key found for Elsevier. See the documentation "
+                   "for more info: "
+                   "https://franklin.readthedocs.io/en/latest/publishers.html#elsevier")
+            raise ConfigError(msg)
+        else:
+            
+            # General failure
+            raise PDFNotFoundError("No PDF for {}".format(doi))
     return pdf_response.content

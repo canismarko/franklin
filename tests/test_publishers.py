@@ -21,6 +21,11 @@ from franklin import publishers
 
 
 class PublisherTests(unittest.TestCase):
+    def test_config(self):
+        config = publishers.load_config()
+        self.assertIn('Elsevier', config)
+        self.assertIn('api_key', config['Elsevier'])
+        
     def test_acs_pdf(self):
         doi = '10.1021/acs.chemmater.6b05114'
         pdf = publishers.american_chemical_society(doi=doi)
@@ -33,3 +38,9 @@ class PublisherTests(unittest.TestCase):
         pdf = publishers.electrochemical_society(doi=doi, url=url)
         pdf_header = pdf[:8]
         self.assertEqual(pdf_header, b'%PDF-1.4')
+    
+    def test_elsevier(self):
+        doi = '10.1016/j.jssc.2019.05.006'
+        pdf = publishers.elsevier(doi=doi, api_key='')
+        pdf_header = pdf[:8]
+        self.assertEqual(pdf_header, b'%PDF-1.7')

@@ -14,3 +14,12 @@ class BibtexFileNotFoundError(FileNotFoundError):
 
 class PDFNotFoundError(FileNotFoundError):
     pass
+
+
+class ConfigError(RuntimeError):
+    pass
+
+
+class UnknownPublisherError(KeyError):
+    pass
+
