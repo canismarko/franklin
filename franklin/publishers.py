@@ -39,6 +39,7 @@ def get_publisher(publisher):
         'American Chemical Society ({ACS})': american_chemical_society,
         'The Electrochemical Society': electrochemical_society,
         'Elsevier {BV}': elsevier,
+        'Springer Science and Business Media {LLC}': springer,
     }
     try:
         pub_func = _pub_dict[publisher]
@@ -100,4 +101,15 @@ def elsevier(doi, api_key=None, *args, **kwargs):
             
             # General failure
             raise PDFNotFoundError("No PDF for {}".format(doi))
+    return pdf_response.content
+
+
+def springer(doi, *args, **kwargs):
+    pdf_url = "https://link.springer.com/content/pdf/{doi}.pdf"
+    pdf_url = pdf_url.format(doi=doi)
+    pdf_response = requests.get(pdf_url)
+    # Verify that it's a valid PDF
+    if not re.match('%PDF-([-0-9]+)', pdf_response.text[:8]):
+        # Failed, so figure out why
+        raise PDFNotFoundError("No PDF for {}".format(doi))
     return pdf_response.content

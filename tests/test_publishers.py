@@ -44,3 +44,10 @@ class PublisherTests(unittest.TestCase):
         pdf = publishers.elsevier(doi=doi, api_key='')
         pdf_header = pdf[:8]
         self.assertEqual(pdf_header, b'%PDF-1.7')
+    
+    def test_elsevier(self):
+        doi = '10.1007/s40097-019-0293-x'
+        pdf = publishers.springer(doi=doi)
+        pdf_header = pdf[:8]
+        self.assertEqual(pdf_header, b'%PDF-1.6')
+        
