@@ -21,6 +21,12 @@ import os
 import configparser
 
 from .exceptions import PDFNotFoundError, UnknownPublisherError, ConfigError
+from . import __version__
+
+
+default_headers = {
+    'User-Agent': f'franklin/{__version__} (https://github.com/canismarko/franklin)',
+}
 
 
 def load_config():
@@ -40,6 +46,7 @@ def get_publisher(publisher):
         'The Electrochemical Society': electrochemical_society,
         'Elsevier {BV}': elsevier,
         'Springer Science and Business Media {LLC}': springer,
+        'Royal Society of Chemistry ({RSC})': royal_society_of_chemistry,
     }
     try:
         pub_func = _pub_dict[publisher]
@@ -51,7 +58,7 @@ def get_publisher(publisher):
 
 def american_chemical_society(doi, *args, **kwargs):
     pdf_url = "https://pubs.acs.org/doi/pdf/{doi}".format(doi=doi)
-    pdf_response = requests.get(pdf_url)
+    pdf_response = requests.get(pdf_url, headers=default_headers)
     # Verify that it's a valid PDF
     if not re.match('%PDF-([-0-9]+)', pdf_response.text[:8]):
         # Failed, so figure out why
@@ -63,11 +70,11 @@ def american_chemical_society(doi, *args, **kwargs):
 def electrochemical_society(doi, *args, **kwargs):
     # Resolve the DOI to an ECS identifier
     lookup_url = 'http://jes.ecsdl.org/lookup/doi/{}'.format(doi)
-    response = requests.get(lookup_url, allow_redirects=False)
+    response = requests.get(lookup_url, allow_redirects=False, headers=default_headers)
     ecs_path = response.headers['Location']
     # Retrieve the PDF
     pdf_url = "http://jes.ecsdl.org/{}.full.pdf".format(ecs_path)
-    pdf_response = requests.get(pdf_url)
+    pdf_response = requests.get(pdf_url, headers=default_headers)
     # Verify that it's a valid PDF
     if not re.match('%PDF-([-0-9]+)', pdf_response.text[:8]):
         # Failed, so figure out why
@@ -84,10 +91,11 @@ def elsevier(doi, api_key=None, *args, **kwargs):
     if api_key:
         api_url += "apiKey={key}&"
     api_url = api_url.format(doi=doi, key=api_key)
-    headers = {
+    headers = default_headers.copy()
+    headers.update({
         'Accept': 'application/pdf',
-        'apiKey': api_key
-    }
+        'apiKey': api_key,
+    })
     pdf_response = requests.get(api_url, headers=headers)
     # Verify that it's a valid PDF
     if not re.match('%PDF-([-0-9]+)', pdf_response.text[:8]):
@@ -107,7 +115,29 @@ def elsevier(doi, api_key=None, *args, **kwargs):
 def springer(doi, *args, **kwargs):
     pdf_url = "https://link.springer.com/content/pdf/{doi}.pdf"
     pdf_url = pdf_url.format(doi=doi)
-    pdf_response = requests.get(pdf_url)
+    pdf_response = requests.get(pdf_url, headers=default_headers)
+    # Verify that it's a valid PDF
+    if not re.match('%PDF-([-0-9]+)', pdf_response.text[:8]):
+        # Failed, so figure out why
+        raise PDFNotFoundError("No PDF for {}".format(doi))
+    return pdf_response.content
+
+
+def royal_society_of_chemistry(doi, url, *args, **kwargs):
+    pdf_url = "https://pubs.rsc.org/en/content/articlepdf/2019/sc/c9sc03417j"
+    pdf_url = "https://pubs.rsc.org/en/content/articlepdf/2019/sc/c9sc03417j"
+    # Determine RSC url for the PDF
+    response = requests.get(url, allow_redirects=False, headers=default_headers)
+    new_url = response.headers['Location']
+    url_regex = 'https://pubs.rsc.org/en/content/articlelanding/([0-9a-zA-Z/]+)/?'
+    match = re.match(url_regex, new_url)
+    if match:
+        rsc_id = match.group(1)
+        pdf_url = f"https://pubs.rsc.org/en/content/articlepdf/{rsc_id}"
+    else:
+        raise PDFNotFoundError("Could not parse article URL: '%s' with regex '%s'" % (new_url, url_regex))
+    # Retrieve the actual PDF
+    pdf_response = requests.get(pdf_url, headers=default_headers)
     # Verify that it's a valid PDF
     if not re.match('%PDF-([-0-9]+)', pdf_response.text[:8]):
         # Failed, so figure out why

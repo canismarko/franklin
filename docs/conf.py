@@ -26,9 +26,10 @@ author = 'Mark Wolfman'
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 # The short X.Y version
-version = read('../VERSION')
+from franklin import __version__
+version = __version__
 # The full version, including alpha/beta/rc tags
-release = read('../VERSION')
+release = __version__
 
 
 # -- General configuration ---------------------------------------------------

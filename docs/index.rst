@@ -48,13 +48,14 @@ The fetch DOI script will retrieve the bibtex entry and, if possible,
 the PDF of an article.
 
 Retrieving the PDF requires either an open-access article or
-institutional access (eg. through VPN). The following publishers are
+institutional access (e.g. through VPN). The following publishers are
 currently supported:
 
 - American Chemical Society (ACS)
 - The Electrochemical Society (ECS)
 - Elsevier
 - Springer
+- The Royal Society of Chemistry (RSC)
 
 To request support for additional publishers, please `submit an
 issue`_. If possible, include the DOI of an open-access article for

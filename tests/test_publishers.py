@@ -19,6 +19,9 @@ import unittest
 
 from franklin import publishers
 
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
 
 class PublisherTests(unittest.TestCase):
     def test_config(self):
@@ -45,9 +48,15 @@ class PublisherTests(unittest.TestCase):
         pdf_header = pdf[:8]
         self.assertEqual(pdf_header, b'%PDF-1.7')
     
-    def test_elsevier(self):
+    def test_springer(self):
         doi = '10.1007/s40097-019-0293-x'
         pdf = publishers.springer(doi=doi)
         pdf_header = pdf[:8]
         self.assertEqual(pdf_header, b'%PDF-1.6')
         
+    def test_royal_society(self):
+        doi = '10.1039/C9SC03417J'
+        url = 'http://xlink.rsc.org/?DOI=C9SC03417J'
+        pdf = publishers.royal_society_of_chemistry(doi=doi, url=url)
+        pdf_header = pdf[:8]
+        self.assertEqual(pdf_header, b'%PDF-1.6')

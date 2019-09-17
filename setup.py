@@ -8,9 +8,14 @@ from setuptools import setup
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
+# Read the project version from franklin/version.py
+version = {}
+with open("franklin/version.py") as fp:
+    exec(fp.read(), version)
+
 setup(
     name = "franklin",
-    version = read('VERSION'),
+    version = version['__version__'],
     author = "Mark Wolfman",
     author_email = "canismarko@gmail.com",
     description = "Retrieve scientific papers and manage associated citations.",
