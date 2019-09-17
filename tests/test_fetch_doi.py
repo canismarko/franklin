@@ -30,14 +30,14 @@ class IsDuplicateTests(TestCase):
     ]
     
     def test_valid_duplicate(self):
-        result = fetch_doi.is_duplicate(doi='10.1021/acs.chemmater.6b05114',
+        result = fetch_doi.existing_ids(doi='10.1021/acs.chemmater.6b05114',
                                         bib_entries=self.sample_bibtex)
-        self.assertTrue(result)
+        self.assertEqual(result, ['wolf2017'])
     
     def test_no_duplicate(self):
-        result = fetch_doi.is_duplicate(doi='gibberish doi',
+        result = fetch_doi.existing_ids(doi='gibberish doi',
                                         bib_entries=self.sample_bibtex)
-        self.assertFalse(result)
+        self.assertIs(result, None)
 
     def test_no_doi(self):
         sample_bibtex = [
@@ -45,9 +45,9 @@ class IsDuplicateTests(TestCase):
                 'ID': 'wolf2017',
             }
         ]
-        result = fetch_doi.is_duplicate(doi='gibberish doi',
+        result = fetch_doi.existing_ids(doi='gibberish doi',
                                         bib_entries=sample_bibtex)
-        self.assertFalse(result)
+        self.assertIs(result, None)
 
 
 class ValidateIDTest(TestCase):
@@ -135,3 +135,18 @@ class FetchDOITests(TestCase):
         finally:
             shutil.rmtree('./papers/')
             os.remove('refs.bib')
+
+
+class ParseDOITests(TestCase):
+    def test_basic_doi(self):
+        new_doi = fetch_doi.parse_doi('10.1021/acs.chemmater.6b05114')
+        self.assertEqual(new_doi, '10.1021/acs.chemmater.6b05114')
+    
+    def test_doi_in_url(self):
+        https_url = 'https://dx.doi.org/10.1021/acs.chemmater.6b05114'
+        new_doi = fetch_doi.parse_doi(https_url)
+        self.assertEqual(new_doi, '10.1021/acs.chemmater.6b05114')
+    
+    def test_bad_doi(self):
+        with self.assertRaises(exceptions.DOIError):
+            fetch_doi.parse_doi('hello')

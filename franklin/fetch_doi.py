@@ -15,32 +15,51 @@
 
 import os
 import argparse
+import re
+import logging
+from typing import List, Iterable
 
 import bibtexparser
 
 from .article import Article
 from . import exceptions
 
+log = logging.getLogger(__name__)
 
-def is_duplicate(doi, bib_entries):
+
+def parse_doi(doi):
+    """Validate and extract a digital object identifier."""
+    regex = ('(https?://)?((dx\.)?doi.org/)?'
+             '([0-9.]+/[-a-zA-Z0-9._;()/#+<>]+)')
+    match = re.match(regex, doi)
+    if match:
+        new_doi = match.group(4)
+        logging.debug("Parsed DOI '%s' to '%s'.", doi, new_doi)
+    else:
+        raise exceptions.DOIError("Malformed DOI: '%s'" % doi)
+    return new_doi
+
+
+def existing_ids(doi: str, bib_entries: Iterable) -> List:
     """Look through a bibtex bibliography and check for duplicate entry.
     
     Parameters
     ==========
-    doi : str
+    doi
       The digital object identifier to search for.
-    bib_entries : list
+    bib_entries
       The bibliography data to look in.
     
     Returns
     =======
-    is_duplicate : bool
-      True if the doi was found in the bibtex bibliography, otherwise
-      False.
+    existing_ids : 
+      List of the IDs of existing entries with this same DOI.
     
     """
-    is_duplicate = doi in [e.get('doi') for e in bib_entries]
-    return is_duplicate
+    existing_ids = [e.get('ID') for e in bib_entries if e.get('doi') == doi]
+    if len(existing_ids) == 0:
+        existing_ids = None
+    return existing_ids
 
 
 def validate_bibtex_id(base_id, pdfs, bibtex_entries):
@@ -131,8 +150,10 @@ def fetch_doi(doi, bibfile, pdf_dir, retrieve_pdf=True):
     # Retrieve the article metdata
     metadata = article.metadata()
     # Check if the entry already exists in the refs file
-    if is_duplicate(doi=doi, bib_entries=bibdb.entries):
-        raise exceptions.DuplicateDOIError("Existing entry found for {}".format(doi))
+    _existing_ids = existing_ids(doi=doi, bib_entries=bibdb.entries)
+    if _existing_ids:
+        raise exceptions.DuplicateDOIError(
+            "Existing entries found for DOI '{}': {}".format(doi, _existing_ids))
     # Determine a unique ID for this entry/PDF
     new_id = validate_bibtex_id(base_id=article.default_id(),
                                 pdfs=os.listdir(pdf_dir),
@@ -172,9 +193,18 @@ def main(argv=None):
                         help='will add the new bibtex entry to this file')
     parser.add_argument('--no-pdf', dest='retrieve_pdf', action='store_false',
                         help="don't attempt to download the article as a PDF")
+    parser.add_argument('-d', '--debug', dest='debug', action='store_true',
+                        help="show detailed debug information via the logging platform")
     # Parse the command line arguments
     args = parser.parse_args(argv)
-    doi = args.doi
+    # Start logging
+    debug = args.debug
+    if debug:
+        level = logging.DEBUG
+    else:
+        level = logging.WARNING
+    logging.basicConfig(level=level)
+    doi = parse_doi(args.doi)
     bibfile = args.bibfile
     pdf_dir = args.pdf_dir
     retrieve_pdf = args.retrieve_pdf
@@ -182,8 +212,12 @@ def main(argv=None):
     if not os.path.exists(bibfile):
         raise exceptions.BibtexFileNotFoundError("Cannot find bibtex file: {}".format(bibfile))
     # Do the actual DOI fetching
+    logging.debug("Opening bibfile '%s'", bibfile) 
     with open(bibfile, mode='a+') as bibfp:
         new_id = fetch_doi(doi=doi, bibfile=bibfp, pdf_dir=pdf_dir, retrieve_pdf=retrieve_pdf)
+    # Confirm successful retrieval
+    msg = "Saved entry as {} ({}.pdf)".format(new_id, os.path.join(pdf_dir, new_id))
+    log.info(msg)
     print("Saved entry as {} ({}.pdf)".format(new_id, os.path.join(pdf_dir, new_id)))
 
 
