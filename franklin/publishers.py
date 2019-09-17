@@ -25,7 +25,7 @@ from . import __version__
 
 
 default_headers = {
-    'User-Agent': f'franklin/{__version__} (https://github.com/canismarko/franklin)',
+    'User-Agent': 'franklin/{} (https://github.com/canismarko/franklin)'.format(__version__),
 }
 
 
@@ -133,7 +133,7 @@ def royal_society_of_chemistry(doi, url, *args, **kwargs):
     match = re.match(url_regex, new_url)
     if match:
         rsc_id = match.group(1)
-        pdf_url = f"https://pubs.rsc.org/en/content/articlepdf/{rsc_id}"
+        pdf_url = "https://pubs.rsc.org/en/content/articlepdf/{}".format(rsc_id)
     else:
         raise PDFNotFoundError("Could not parse article URL: '%s' with regex '%s'" % (new_url, url_regex))
     # Retrieve the actual PDF

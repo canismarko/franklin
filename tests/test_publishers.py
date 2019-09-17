@@ -15,12 +15,11 @@
 
 
 import unittest
+import io
 
+import PyPDF2
 
 from franklin import publishers
-
-import logging
-logging.basicConfig(level=logging.DEBUG)
 
 
 class PublisherTests(unittest.TestCase):
@@ -43,10 +42,14 @@ class PublisherTests(unittest.TestCase):
         self.assertEqual(pdf_header, b'%PDF-1.4')
     
     def test_elsevier(self):
-        doi = '10.1016/j.jssc.2019.05.006'
-        pdf = publishers.elsevier(doi=doi, api_key='')
-        pdf_header = pdf[:8]
+        # doi = '10.1016/j.jpowsour.2008.09.090' # <- not open access
+        doi = '10.1016/j.jssc.2019.05.006' # <- open access
+        pdf_bytes = publishers.elsevier(doi=doi, api_key='')
+        pdf_header = pdf_bytes[:8]
         self.assertEqual(pdf_header, b'%PDF-1.7')
+        # Check for the right number of pages in PDF
+        pdf = PyPDF2.PdfFileReader(io.BytesIO(pdf_bytes))
+        self.assertEqual(pdf.getNumPages(), 9)
     
     def test_springer(self):
         doi = '10.1007/s40097-019-0293-x'

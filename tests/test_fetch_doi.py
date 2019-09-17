@@ -109,15 +109,13 @@ class FetchDOITests(TestCase):
     def test_fetch_doi(self):
         bibfile = io.StringIO()
         pdfdir = 'papers/'
+        os.mkdir(pdfdir)
         try:
-            os.mkdir(pdfdir)
             fetch_doi.fetch_doi(doi='10.1021/acs.chemmater.6b05114',
                                 pdf_dir='papers/',
                                 bibfile=bibfile)
         finally:
             shutil.rmtree(pdfdir)
-            pass
-        print(bibfile.getvalue())
             
     def test_duplicate_doi(self):
         bibfile = io.StringIO('@article{wolf2017,'
