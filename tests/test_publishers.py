@@ -27,7 +27,7 @@ class PublisherTests(unittest.TestCase):
         config = publishers.load_config()
         self.assertIn('Elsevier', config)
         self.assertIn('api_key', config['Elsevier'])
-        
+    
     def test_acs_pdf(self):
         doi = '10.1021/acs.chemmater.6b05114'
         pdf = publishers.american_chemical_society(doi=doi)
@@ -56,10 +56,16 @@ class PublisherTests(unittest.TestCase):
         pdf = publishers.springer(doi=doi)
         pdf_header = pdf[:8]
         self.assertEqual(pdf_header, b'%PDF-1.6')
-        
+    
     def test_royal_society(self):
         doi = '10.1039/C9SC03417J'
         url = 'http://xlink.rsc.org/?DOI=C9SC03417J'
         pdf = publishers.royal_society_of_chemistry(doi=doi, url=url)
+        pdf_header = pdf[:8]
+        self.assertEqual(pdf_header, b'%PDF-1.6')
+    
+    def test_wiley(self):
+        doi = "10.1002/open.201900136"
+        pdf = publishers.wiley(doi=doi)
         pdf_header = pdf[:8]
         self.assertEqual(pdf_header, b'%PDF-1.6')

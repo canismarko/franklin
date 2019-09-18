@@ -47,6 +47,7 @@ def get_publisher(publisher):
         'Elsevier {BV}': elsevier,
         'Springer Science and Business Media {LLC}': springer,
         'Royal Society of Chemistry ({RSC})': royal_society_of_chemistry,
+        'Wiley': wiley,
     }
     try:
         pub_func = _pub_dict[publisher]
@@ -138,6 +139,16 @@ def royal_society_of_chemistry(doi, url, *args, **kwargs):
         raise PDFNotFoundError("Could not parse article URL: '%s' with regex '%s'" % (new_url, url_regex))
     # Retrieve the actual PDF
     pdf_response = requests.get(pdf_url, headers=default_headers)
+    # Verify that it's a valid PDF
+    if not re.match('%PDF-([-0-9]+)', pdf_response.text[:8]):
+        # Failed, so figure out why
+        raise PDFNotFoundError("No PDF for {}".format(doi))
+    return pdf_response.content
+
+
+def wiley(doi, *args, **kwargs):
+    pdf_url = "https://onlinelibrary.wiley.com/doi/pdfdirect/{}".format(doi)
+    pdf_response = requests.get(pdf_url)
     # Verify that it's a valid PDF
     if not re.match('%PDF-([-0-9]+)', pdf_response.text[:8]):
         # Failed, so figure out why

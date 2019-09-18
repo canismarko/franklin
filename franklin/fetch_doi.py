@@ -195,6 +195,8 @@ def main(argv=None):
                         help="don't attempt to download the article as a PDF")
     parser.add_argument('-d', '--debug', dest='debug', action='store_true',
                         help="show detailed debug information via the logging platform")
+    parser.add_argument('-f', '--force', dest='force', action='store_true',
+                        help="force creation of files, directories, etc.")
     # Parse the command line arguments
     args = parser.parse_args(argv)
     # Start logging
@@ -205,12 +207,19 @@ def main(argv=None):
         level = logging.WARNING
     logging.basicConfig(level=level)
     doi = parse_doi(args.doi)
+    force = args.force
     bibfile = args.bibfile
     pdf_dir = args.pdf_dir
     retrieve_pdf = args.retrieve_pdf
     # Check if the file exists
-    if not os.path.exists(bibfile):
+    if not os.path.exists(bibfile) and not force:
         raise exceptions.BibtexFileNotFoundError("Cannot find bibtex file: {}".format(bibfile))
+    # Check if the PDF directory exists
+    if not os.path.exists(pdf_dir) and retrieve_pdf:
+        if force:
+            os.makedirs(pdf_dir)
+        else:
+            raise exceptions.BibtexFileNotFoundError("Cannot find PDF folder: {}".format(pdf_dir))
     # Do the actual DOI fetching
     logging.debug("Opening bibfile '%s'", bibfile) 
     with open(bibfile, mode='a+') as bibfp:
