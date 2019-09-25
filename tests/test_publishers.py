@@ -69,3 +69,9 @@ class PublisherTests(unittest.TestCase):
         pdf = publishers.wiley(doi=doi)
         pdf_header = pdf[:8]
         self.assertEqual(pdf_header, b'%PDF-1.6')
+    
+    def test_annual_reviews(self):
+        doi = '10.1146/annurev.physchem.59.032607.093731'
+        pdf = publishers.annual_reviews(doi=doi)
+        pdf_header = pdf[:8]
+        self.assertEqual(pdf_header, b'%PDF-1.4')

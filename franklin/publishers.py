@@ -48,6 +48,7 @@ def get_publisher(publisher):
         'Springer Science and Business Media {LLC}': springer,
         'Royal Society of Chemistry ({RSC})': royal_society_of_chemistry,
         'Wiley': wiley,
+        'Annual Reviews': annual_reviews,
     }
     try:
         pub_func = _pub_dict[publisher]
@@ -148,6 +149,16 @@ def royal_society_of_chemistry(doi, url, *args, **kwargs):
 
 def wiley(doi, *args, **kwargs):
     pdf_url = "https://onlinelibrary.wiley.com/doi/pdfdirect/{}".format(doi)
+    pdf_response = requests.get(pdf_url)
+    # Verify that it's a valid PDF
+    if not re.match('%PDF-([-0-9]+)', pdf_response.text[:8]):
+        # Failed, so figure out why
+        raise PDFNotFoundError("No PDF for {}".format(doi))
+    return pdf_response.content
+
+
+def annual_reviews(doi, *args, **kwargs):
+    pdf_url = 'https://www.annualreviews.org/doi/pdf/{}'.format(doi)
     pdf_response = requests.get(pdf_url)
     # Verify that it's a valid PDF
     if not re.match('%PDF-([-0-9]+)', pdf_response.text[:8]):
