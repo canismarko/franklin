@@ -49,6 +49,7 @@ def get_publisher(publisher):
         'Royal Society of Chemistry ({RSC})': royal_society_of_chemistry,
         'Wiley': wiley,
         'Annual Reviews': annual_reviews,
+        'Institute of Electrical and Electronics Engineers ({IEEE})': ieee,
     }
     try:
         pub_func = _pub_dict[publisher]
@@ -163,5 +164,25 @@ def annual_reviews(doi, *args, **kwargs):
     # Verify that it's a valid PDF
     if not re.match('%PDF-([-0-9]+)', pdf_response.text[:8]):
         # Failed, so figure out why
+        raise PDFNotFoundError("No PDF for {}".format(doi))
+    return pdf_response.content
+
+
+def ieee(doi, url, *args, **kwargs):
+    # Get the PDF URL from the HTML page
+    html_response = requests.get(url)
+    html_regex = '"pdfPath":"([^"]+)"'
+    html_re = re.search(html_regex, html_response.text)
+    if html_re:
+        pdf_url = 'https://ieeexplore.ieee.org{}'.format(html_re.group(1))
+    else:
+        raise PDFNotFoundError("Could not parse article URL: '%s' with regex '%s'" % (url, html_regex))
+    # This is a kludge to fix a typo(?) in a specific file
+    pdf_url = pdf_url.replace('iel7', 'ielx7')
+    # Now retrieve the PDF itself
+    pdf_response = requests.get(pdf_url)
+    # Verify that it's a valid PDF
+    if not re.match('%PDF-([-0-9]+)', pdf_response.text[:8]):
+        # Failed, raise a more helpful exception
         raise PDFNotFoundError("No PDF for {}".format(doi))
     return pdf_response.content

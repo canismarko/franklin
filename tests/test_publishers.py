@@ -19,7 +19,7 @@ import io
 
 import PyPDF2
 
-from franklin import publishers
+from franklin import publishers, exceptions
 
 
 class PublisherTests(unittest.TestCase):
@@ -75,3 +75,15 @@ class PublisherTests(unittest.TestCase):
         pdf = publishers.annual_reviews(doi=doi)
         pdf_header = pdf[:8]
         self.assertEqual(pdf_header, b'%PDF-1.4')
+    
+    def test_ieee(self):
+        doi = '10.1109/ACCESS.2019.2941901'
+        url = 'https://ieeexplore.ieee.org/document/8840876'
+        pdf = publishers.ieee(doi=doi, url=url)
+        pdf_header = pdf[:8]
+        self.assertEqual(pdf_header, b'%PDF-1.4')
+        # Test that a bad url raises an exception
+        bad_url = 'https://ieeexplore.ieee.org/fakething/8843852/'
+        with self.assertRaises(exceptions.PDFNotFoundError):
+            pdf = publishers.ieee(doi=doi, url=bad_url)
+
