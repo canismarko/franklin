@@ -50,6 +50,7 @@ def get_publisher(publisher):
         'Wiley': wiley,
         'Annual Reviews': annual_reviews,
         'Institute of Electrical and Electronics Engineers ({IEEE})': ieee,
+        'American Association for the Advancement of Science ({AAAS})': aaas,
     }
     try:
         pub_func = _pub_dict[publisher]
@@ -68,6 +69,24 @@ def american_chemical_society(doi, *args, **kwargs):
         if "Missing resource" in pdf_response.text:
             raise PDFNotFoundError("No PDF for {}".format(doi))
     return pdf_response.content
+
+
+def aaas(doi, *args, **kwargs):
+    # Go resolve the url to extract the AAAS article ID
+    html_url = 'https://www.sciencemag.org/lookup/doi/{}'.format(doi)
+    response = requests.options(html_url)
+    article_re = re.match('https?://[a-z.]+/content/([0-9/]+)', response.url)
+    article_id = article_re.group(1)
+    # Get the PDF of the article
+    pdf_url = "https://science.sciencemag.org/content/{id}.full.pdf".format(id=article_id)
+    pdf_response = requests.get(pdf_url, headers=default_headers)
+    # Verify that it's a valid PDF
+    if not re.match('%PDF-([-0-9]+)', pdf_response.text[:8]):
+        # Failed, so figure out why
+        if "Missing resource" in pdf_response.text:
+            raise PDFNotFoundError("No PDF for {}".format(doi))
+    return pdf_response.content
+
 
 
 def electrochemical_society(doi, *args, **kwargs):
@@ -150,7 +169,7 @@ def royal_society_of_chemistry(doi, url, *args, **kwargs):
 
 def wiley(doi, *args, **kwargs):
     pdf_url = "https://onlinelibrary.wiley.com/doi/pdfdirect/{}".format(doi)
-    pdf_response = requests.get(pdf_url)
+    pdf_response = requests.get(pdf_url, headers=default_headers)
     # Verify that it's a valid PDF
     if not re.match('%PDF-([-0-9]+)', pdf_response.text[:8]):
         # Failed, so figure out why

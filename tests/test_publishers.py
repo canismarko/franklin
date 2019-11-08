@@ -86,4 +86,9 @@ class PublisherTests(unittest.TestCase):
         bad_url = 'https://ieeexplore.ieee.org/fakething/8843852/'
         with self.assertRaises(exceptions.PDFNotFoundError):
             pdf = publishers.ieee(doi=doi, url=bad_url)
-
+    
+    def test_aaas(self):
+        doi = '10.1126/science.363.6422.11'
+        pdf = publishers.aaas(doi=doi)
+        pdf_header = pdf[:8]
+        self.assertEqual(pdf_header, b'%PDF-1.4')
