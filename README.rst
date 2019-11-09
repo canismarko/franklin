@@ -8,6 +8,8 @@ Franklin Citation Toolkit
   :target: https://travis-ci.com/canismarko/franklin
 .. image:: https://coveralls.io/repos/github/canismarko/franklin/badge.svg?branch=master
   :target: https://coveralls.io/github/canismarko/franklin?branch=master
+.. image:: https://badge.fury.io/py/franklin.svg
+  :target: https://badge.fury.io/py/franklin	   
 
 ``franklin`` is a set of tools for accessing research articles and
 their associated bibtex references.
