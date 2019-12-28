@@ -28,37 +28,6 @@ from .publishers import get_publisher
 log = logging.getLogger(__name__)
 
 
-def journal_abbreviation(journal):
-    """Retrieve abbreviated journal name from CASSI."""
-    # Ask for a validation code for having accepted the terms of service
-    cookies = {'UserAccepted': 'YES'}
-    response = requests.get('https://cassi.cas.org/search.jsp', cookies=cookies)
-    content = str(response.content)
-    if 'You have to enable JavaScript' in content:
-        raise exceptions.CASSIError("Could not accept CASSI terms.")
-    # Extract the validation code from the response
-    r_str = '<input type="hidden" name="c" value="([^"]+)"'
-    match = re.search(r_str, content)
-    if match:
-        c_code = match.group(1)
-    else:
-        raise exceptions.CASSIError("Could not extract CASSI terms validation code.")
-    # Perform the actual search
-    response = requests.post('https://cassi.cas.org/searching.jsp',
-                             data={'searchIn': 'titles',
-                                   'searchFor': journal,
-                                   'exactMatch': 'on',
-                                   'c': 'WIy460-R_DY'})
-    # Search the return response for the abbreviated title
-    r_str = '<tr><td class="name">Abbreviated Title</td><td class="value">([A-Za-z0-9_. ]+)</td></tr>'
-    match = re.search(r_str, str(response.content))
-    if match:
-        abbr = match.group(1)
-    else:
-        log.warning("Could not abbreviate journal '%s'.", journal)
-        abbr = journal
-    return abbr
-
 class Article():
     """A publish research article."""
     _doi_resolution = None

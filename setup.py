@@ -28,7 +28,10 @@ setup(
         'bibtexparser', 'requests',
     ],
     entry_points = {
-        'console_scripts': ['fetch-doi=franklin.fetch_doi:main'],
+        'console_scripts': [
+            'fetch-doi=franklin.fetch_doi:main',
+            'abbreviate-journals=franklin.journals:abbreviate_journals_cli',
+        ],
     },
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",

@@ -12,7 +12,15 @@ class BibtexFileNotFoundError(FileNotFoundError):
     pass
 
 
+class CassiError(RuntimeError):
+    pass
+
+
 class PDFNotFoundError(FileNotFoundError):
+    pass
+
+
+class FileExistsError(RuntimeError):
     pass
 
 
