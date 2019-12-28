@@ -18,6 +18,7 @@ import io
 import os
 
 import bibtexparser
+import pandas as pd
 
 from franklin import journals
 
@@ -36,12 +37,28 @@ class JournalTests(TestCase):
     
     def test_no_abbreviate_journal(self):
         """Check what happens if there's no journal to abbreviate."""
-        pass
+        book_bib = (
+            '@book{groot2008,'
+            'author = {Frank de Groot and Akio Kotani},'
+            'title = {Core Level Spectroscopy of Solids},'
+            'publisher = {CRC Press},'
+            'year = 2008,'
+            'isbn = {978-0-8493-9071-5}'
+        '}')
+        bibfile = io.StringIO(book_bib)
+        out_file = io.StringIO()
+        journals.abbreviate_journals(bibfile=bibfile, output=out_file,
+                                     use_native=True, use_cassi=False, use_ltwa=False)
+        # Make sure that bib entries without a 'journal' are included as is
+        out_file.seek(0)
+        bibdb = bibtexparser.load(out_file)
+        self.assertEqual(bibdb.entries[0]['ID'], 'groot2008')
     
     def test_abbreviate_journal_local(self):
         bibfile = io.StringIO(self.bib_in)
         out_file = io.StringIO()
-        journals.abbreviate_journals(bibfile=bibfile, output=out_file, use_local=True, use_cassi=False)
+        journals.abbreviate_journals(bibfile=bibfile, output=out_file,
+                                     use_native=True, use_cassi=False, use_ltwa=False)
         # Check that the output
         out_file.seek(0)
         bibdb = bibtexparser.load(out_file)
@@ -74,8 +91,42 @@ class JournalTests(TestCase):
     @mock.patch('franklin.journals.abbreviate_journals')
     def test_cli(self, abbreviate_journals):
         journals.abbreviate_journals_cli(['/dev/null', '-o', 'test-file-abbrev.bib'])
-        abbreviate_journals.assert_called_once()
+        self.assertEqual(abbreviate_journals.call_count, 1)
         output = abbreviate_journals.call_args[1]['output']
         self.assertEqual(output.name, 'test-file-abbrev.bib')
-        self.assertTrue(abbreviate_journals.call_args[1]['use_local'])
+        self.assertTrue(abbreviate_journals.call_args[1]['use_native'])
         self.assertTrue(abbreviate_journals.call_args[1]['use_cassi'])
+
+
+class LTWATests(TestCase):
+    def test_no_abbreviations(self):
+        ltwa = journals.LTWAAbbreviation()
+        abbr = ltwa['SPIE Newsroom']
+        self.assertEqual(abbr, 'SPIE Newsroom')
+    
+    def test_abbreviations(self):
+        ltwa = journals.LTWAAbbreviation()
+        valid_abbrs = {
+            'Journal of the american Chemical Society': 'J. Am. Chem. Soc.',
+            'nuclear instruments & methods in physics research section a-accelerators spectrometers detectors and associated equipment': 'Nucl. Instrum. Methods In Phys. Res. Sect. A-Accelerators Spectrom. Detect. Assoc. Equip.'
+        }
+        for (journal, real_abbr) in valid_abbrs.items():
+            abbr = ltwa[journal]
+            self.assertEqual(abbr, real_abbr)
+            
+        
+    def test_find_abbrev_in_df(self):
+        ltwa = journals.LTWAAbbreviation()
+        df = pd.DataFrame([('a-', 'a.', 'en'), ('b-', 'n.a.', 'en'), ('chuck-', 'c.-', 'en')],
+                          columns=['WORD', 'ABBREVIATIONS', 'LANGUAGE CODES'])
+        abbrev = ltwa.find_abbrev_in_df('art', df)
+        self.assertEqual(abbrev, 'a.')
+        # Check a 'n.a.' word
+        abbrev = ltwa.find_abbrev_in_df('bowl', df)
+        self.assertEqual(abbrev, 'bowl')
+        # Check an abbreviation with captured group
+        abbrev = ltwa.find_abbrev_in_df('chuckle', df)
+        self.assertEqual(abbrev, 'c.le')
+        # Check a non-existent word
+        abbrev = ltwa.find_abbrev_in_df('dance', df)
+        self.assertEqual(abbrev, 'dance')

@@ -1,9 +1,11 @@
 import os
 import logging
 import re
+import io
 import argparse
 from functools import lru_cache
 
+import pandas as pd
 from html.parser import HTMLParser
 import requests
 import bibtexparser
@@ -16,7 +18,7 @@ log = logging.getLogger(__name__)
 
 
 local_abbreviations = {
-    'the journal of small papers': 'J. Sm. Papers',
+    'journal of small papers': 'J. Sm. Papers',
     'materials today nano': 'Mater. Today Nano',
     'materials today': 'Mater. Today',
     'advanced energy materials': 'Adv. Energy Mater.',
@@ -56,7 +58,7 @@ local_abbreviations = {
 
 class CassiAbbreviation():
     span_re = re.compile('<span style="background-color:#7FFFD4">([^<]*)</span>')
-    whitespace_re = re.compile('\s+')
+    whitespace_re = re.compile(r'\s+')
     class SearchParser(HTMLParser):
         journals = ... # Set in __init__
         coden_re = re.compile('([A-Z]+)_TVALUE')
@@ -111,22 +113,24 @@ class CassiAbbreviation():
                 self._current_coden = None
     
     def parse_multiple_sources(self, html_response, journal):
+        log.debug("Parsing CASSI response for mutliple results.")
         # Sort through the HTML
         parser = self.SearchParser()
         parser.feed(html_response)
         # See if the requested journal is in the parsed data
         matched_journals = [j for j in parser.journals if j['title'].lower() == journal.lower()]
         if len(matched_journals) == 0:
-            raise KeyError(f"Could not find CASSI entry for '{journal}'.")
+            raise KeyError("Could not find CASSI entry for '{journal}'.".format(journal=journal))
         if len(matched_journals) > 1:
             print(parser.journals)
-            raise exceptions.CassiError(f"Found {len(matched_journals)} CASSI entries for "
-                                        f"'{journal}'.")
+            raise exceptions.CassiError("Found {num} CASSI entries for "
+                                        "'{journal}'.".format(num=len(matched_journals), journal=journal))
         else:
             abbr = matched_journals[0]['abbreviation']
         return abbr
     
     def parse_single_source(self, html_response, journal):
+        log.debug("Parsing CASSI response for single result.")
         # Search the return response for the abbreviated title
         r_str = ('<tr><td class="name">Abbreviated Title</td>'
                  '<td class="value">(?:<span [^>]+>)?'
@@ -136,7 +140,7 @@ class CassiAbbreviation():
         if match:
             abbr = match.group(1)
         else:
-            raise exceptions.CassiError(f"Could not parse single hit for '{journal}'")
+            raise exceptions.CassiError("Could not parse single hit for '{journal}'".format(journal=journal))
         return abbr
     
     @lru_cache()
@@ -171,10 +175,11 @@ class CassiAbbreviation():
             abbr = self.parse_multiple_sources(response_text, journal)
         else:
             abbr = self.parse_single_source(response_text, journal)
+        log.info('Abbreviated "{journal}" to "{abbr}" by CASSI'.format(journal=journal, abbr=abbr))
         return abbr
 
 
-def abbreviate_journals(bibfile: str, output: str=None, use_local=True, use_cassi=True):
+def abbreviate_journals(bibfile: str, output: str=None, use_native=True, use_cassi=True, use_ltwa=True):
     """Parse a bibtex file and abbreviate journal titles.
     
     Parameters
@@ -184,43 +189,45 @@ def abbreviate_journals(bibfile: str, output: str=None, use_local=True, use_cass
     output
       The open bibtex file object to receive the parsed bibtex
       content.
-    use_local
+    use_native
       Use the built-in database of journal abbreviations.
     use_cassi
       Use the ACS CASSI database of journal abbreviations.
+    use_ltwa
+      Use the ISSN list of title word abbreviations (LTWA).
     
     """
     # Build a list of which databases to query
     abbr_dbs = []
-    if use_local:
+    if use_native:
         abbr_dbs.append(local_abbreviations)
     if use_cassi:
         abbr_dbs.append(CassiAbbreviation())
+    if use_ltwa:
+        abbr_dbs.append(LTWAAbbreviation())
     olddb = bibtexparser.load(bibfile)
     newdb = bibtexparser.bibdatabase.BibDatabase()
     for entry in tqdm.tqdm(olddb.entries):
         if 'journal' in entry.keys():
             journal = entry['journal']
-        else:
-            continue
-        # Clean up the journal title a little
-        journal = journal.strip()
-        if journal.lower()[0:3] == 'the':
-            journal = journal[4:]
-        journal = journal.replace('\&', '&').replace('{', '').replace('}', '')
-        journal = journal.replace('\ ', ' ').replace('\n', ' ')
-        # Do the lookup in each database
-        for abbrs in abbr_dbs:
-            try:
-                entry['journal'] = abbrs[journal.lower()]
-            except KeyError:
-                continue
-            except exceptions.CassiError as e:
-                log.warning(e)
+            # Clean up the journal title a little
+            journal = journal.strip()
+            if journal.lower()[0:3] == 'the':
+                journal = journal[4:]
+            journal = journal.replace(r'\&', '&').replace('{', '').replace('}', '')
+            journal = journal.replace(r'\ ', ' ').replace(r'\n', ' ')
+            # Do the lookup in each database
+            for abbrs in abbr_dbs:
+                try:
+                    entry['journal'] = abbrs[journal.lower()]
+                except KeyError:
+                    continue
+                except (exceptions.CassiError, requests.exceptions.ConnectionError) as e:
+                    log.warning(e)
+                else:
+                    break
             else:
-                break
-        else:
-            log.warning(f"Could not abbreviate journal '{journal}'.")
+                log.warning("Could not abbreviate journal '{journal}'.".format(journal=journal))
         newdb.entries.append(entry)
     # Save the updated bibtext database to the new file
     bibtexparser.dump(newdb, output)
@@ -230,27 +237,83 @@ def abbreviate_journals_cli(argv=None):
     # Parse the arguments
     parser = argparse.ArgumentParser(description='Abbreviate journal titles in a Bibtex file.')
     parser.add_argument('bibfile', help='bibtex input file')
+    parser.add_argument('-d', '--debug', action='store_true', help='Very verbose logging output')
+    parser.add_argument('-v', '--verbose', action='store_true', help='Verbose logging output')
+    parser.add_argument('-q', '--quiet', action='store_true', help='Suppress logging output')
     parser.add_argument('-o', '--output', help='bibtex input file')
     parser.add_argument('-f', '--force', help='Overwrite existing output file.',
                         action='store_true')
-    parser.add_argument('-l', '--no-local', dest='use_local', action='store_false',
-                        help='Do not query the local database.')
+    parser.add_argument('-n', '--no-native', dest='use_native', action='store_false',
+                        help='Do not query the native override database.')
     parser.add_argument('-c', '--no-cassi', dest='use_cassi', action='store_false',
                         help='Do not query the CASSI database.')
+    parser.add_argument('-l', '--no-ltwa', dest='use_ltwa', action='store_false',
+                        help='Do not abbreviate by LTWA.')
     parser.add_argument('--logfile', help='file to receive the debug log')
     args = parser.parse_args(argv)
     # Prepare logging
-    logging.basicConfig(filename=args.logfile)
+    if args.debug:
+        loglevel = logging.DEBUG
+    elif args.verbose:
+        loglevel = logging.INFO
+    elif args.quiet:
+        loglevel = logging.CRITICAL
+    else:
+        loglevel = logging.WARNING
+    logging.basicConfig(filename=args.logfile, level=loglevel)
     # Get a default output filename if necessary
     output = args.output
     if output is None:
         base, ext = os.path.splitext(args.bibfile)
-        output = f'{base}-abbrev{ext}'
+        output = '{base}-abbrev{ext}'.format(base=base, ext=ext)
     # Check if the file exists
     if os.path.exists(output) and not args.force:
         raise exceptions.FileExistsError(
-            f"Output file '{output}' already exists. Use `--force` to overwrite.")
+            "Output file '{output}' already exists. Use `--force` to overwrite.".format(output=output))
     # Call the actual function
     with open(args.bibfile, mode='r') as bibfile, open(output, mode='w') as output:
-        abbreviate_journals(bibfile=bibfile, output=output, use_local=args.use_local,
-                            use_cassi=args.use_cassi)
+        abbreviate_journals(bibfile=bibfile, output=output, use_native=args.use_native,
+                            use_cassi=args.use_cassi, use_ltwa=args.use_ltwa)
+
+
+class LTWAAbbreviation():
+    ltwa_url = 'https://www.issn.org/wp-content/uploads/2013/09/LTWA_20160915.txt'
+    
+    @lru_cache()
+    def ltwa_list(self):
+        fp = io.StringIO(requests.get(self.ltwa_url).text)
+        df = pd.read_csv(fp, delimiter='\t')
+        return df
+    
+    def find_abbrev_in_df(self, word, df):
+        for idx, (word_re, curr_abbrev, lang) in df.iterrows():
+            word_re = word_re.replace('-', '(.*)')
+            match = re.match(word_re, word.lower())
+            # We found the matching entry, so stop looking
+            if match:
+                abbrev = curr_abbrev if curr_abbrev != 'n.a.' else word
+                group_idx = 1
+                while '-' in abbrev:
+                    abbrev = abbrev.replace('-', match.group(group_idx), 1)
+                    group_idx += 1
+                break
+        else:
+            abbrev = word
+        return abbrev
+    
+    def __getitem__(self, title):
+        ignored_words = ['of', 'the', 'a', '&', 'and']
+        df = self.ltwa_list()
+        abbreviations = []
+        for word in title.split():
+            if word not in ignored_words:
+                abbreviations.append(self.find_abbrev_in_df(word, df))
+        # Convert the list of matched abbreviations/words to a new journal title
+        new_title = ' '.join(abbreviations)
+        # Convert to title case (except for initialisms)
+        new_title = new_title.title()
+        acronyms = [s for s in abbreviations if s.isupper()]
+        for acronym in acronyms:
+            new_title = new_title.replace(acronym.title(), acronym)
+        log.info('Abbreviated "{title}" to "{new_title}" by LTWA'.format(title=title, new_title=new_title))
+        return new_title

@@ -67,7 +67,7 @@ class Article():
         del metadata['ID']
         return metadata
     
-    def bibtex(self, id=None, abbreviate_journal=True):
+    def bibtex(self, id=None):
         """Prepare bibtex entry for this article.
         
         Parameters
@@ -75,9 +75,6 @@ class Article():
         id : str
           The entry ID to use. If omitted, ``self.default_id()`` will
           be used.
-        abbreviate_journal : bool
-          If true, the abbreviated journal name will be retrieved from
-          CASSI.
         
         Returns
         =======
@@ -87,9 +84,6 @@ class Article():
         """
         metadata = self.metadata()
         metadata['ID'] = id if id is not None else self.default_id()
-        # Abbreviate the journal name
-        if abbreviate_journal:
-            metadata['journal'] = journal_abbreviation(metadata['journal'])
         # Convert to bibtex
         db = bibtexparser.bibdatabase.BibDatabase()
         db.entries = [metadata]

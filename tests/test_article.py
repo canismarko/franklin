@@ -18,16 +18,8 @@ import io
 
 import bibtexparser
 
-from franklin import Article, journal_abbreviation, exceptions
+from franklin import Article, exceptions
 
-
-class CASSITests(unittest.TestCase):
-    def test_real_journal(self):
-        abbr = journal_abbreviation('Chemistry of Materials')
-        self.assertEqual(abbr, 'Chem. Mater.')
-        # Now try with nonsense journal
-        abbr = journal_abbreviation('Journal of hard knocks')
-        self.assertEqual(abbr, 'Journal of hard knocks')
 
 class ArticlesTests(unittest.TestCase):
     perspective_paper_doi = '10.1021/acs.chemmater.6b05114'
@@ -55,14 +47,14 @@ class ArticlesTests(unittest.TestCase):
     
     def test_bibtex(self):
         article = Article(doi=self.perspective_paper_doi)
-        bibtex = article.bibtex(abbreviate_journal=True)
+        bibtex = article.bibtex()
         bibtex = bibtexparser.loads(bibtex)
         self.assertEqual(len(bibtex.entries), 1)
         bibdict = bibtex.entries[0]
         self.assertEqual(bibdict['doi'], self.perspective_paper_doi)
         self.assertEqual(bibdict['author'], 'Mark Wolf and Brian M. May and Jordi Cabana')
         self.assertEqual(bibdict['publisher'], 'American Chemical Society ({ACS})')
-        self.assertEqual(bibdict['journal'], 'Chem. Mater.')
+        self.assertEqual(bibdict['journal'], 'Chemistry of Materials')
         self.assertEqual(bibdict['year'], '2017')
         self.assertEqual(bibdict['ID'], 'wolf2017')
         # Now try with a custom ID
