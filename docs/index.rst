@@ -12,6 +12,7 @@ their associated bibtex references.
 The following console scripts are available.
 
 - ``fetch-doi`` - Retrieve PDFs and bibtex entries.
+- ``abbreviate-journals`` - Parse a bibtex file and abbreviate the journal titles.
 - ``bibtex-cleanup`` - [coming soon] Parse a bibtex file and clean it up.
 
 .. toctree::
@@ -60,6 +61,31 @@ currently supported:
 To request support for additional publishers, please `submit an
 issue`_. If possible, include the DOI of an open-access article for
 testing.
+
+Abbreviate Journals
+-------------------
+
+The ``abbreviate-journals`` command line tool can be used to look up
+abbreviated journal names from several sources.
+
+First, a **dictionary of local journal abbreviations** is queried. This
+can be skipped using the ``--no-native`` option.
+
+Second, the **chemical abstract services source index** is
+queried. Since CASSI does not provide an API, this involves directly
+parsing HTML pages and so is not perfectly reliable. This option is
+provided in good faith to comply with the usage guidelines set forth
+by CASSI, since the retrieved data are not saved in a directory and
+are retrieved one at a time. Please review the CASSI usage guidelines
+and refrain from using this option if you do not agree to these
+guidelines. This behavior can be disable by providing the
+``--no-cassi`` option.
+
+As a last resort, *franklin* will attempt to determine the journal
+abbreviation directly the the ISSN list of title word abbreviations
+(LTWA). This will always produce a result, but is currently very slow
+and not well tested. This option can be disabled with the
+``--no-ltwa`` option.
 
 Indices and tables
 ==================
