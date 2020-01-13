@@ -1,3 +1,4 @@
+
 # This file is part of Franklin.
 # 
 # Franklin is free software: you can redistribute it and/or modify
@@ -47,8 +48,8 @@ class JournalTests(TestCase):
         '}')
         bibfile = io.StringIO(book_bib)
         out_file = io.StringIO()
-        journals.abbreviate_journals(bibfile=bibfile, output=out_file,
-                                     use_native=True, use_cassi=False, use_ltwa=False)
+        journals.abbreviate_bibtex_journals(bibfile=bibfile, output=out_file,
+                                            use_native=True, use_cassi=False, use_ltwa=False)
         # Make sure that bib entries without a 'journal' are included as is
         out_file.seek(0)
         bibdb = bibtexparser.load(out_file)
@@ -57,8 +58,8 @@ class JournalTests(TestCase):
     def test_abbreviate_journal_local(self):
         bibfile = io.StringIO(self.bib_in)
         out_file = io.StringIO()
-        journals.abbreviate_journals(bibfile=bibfile, output=out_file,
-                                     use_native=True, use_cassi=False, use_ltwa=False)
+        journals.abbreviate_bibtex_journals(bibfile=bibfile, output=out_file,
+                                            use_native=True, use_cassi=False, use_ltwa=False)
         # Check that the output
         out_file.seek(0)
         bibdb = bibtexparser.load(out_file)
@@ -88,14 +89,14 @@ class JournalTests(TestCase):
         if os.path.exists('test-file-abbrev.bib'):
             os.remove('test-file-abbrev.bib')
     
-    @mock.patch('franklin.journals.abbreviate_journals')
-    def test_cli(self, abbreviate_journals):
+    @mock.patch('franklin.journals.abbreviate_bibtex_journals')
+    def test_cli(self, abbreviate_bibtex_journals):
         journals.abbreviate_journals_cli(['/dev/null', '-o', 'test-file-abbrev.bib'])
-        self.assertEqual(abbreviate_journals.call_count, 1)
-        output = abbreviate_journals.call_args[1]['output']
+        self.assertEqual(abbreviate_bibtex_journals.call_count, 1)
+        output = abbreviate_bibtex_journals.call_args[1]['output']
         self.assertEqual(output.name, 'test-file-abbrev.bib')
-        self.assertTrue(abbreviate_journals.call_args[1]['use_native'])
-        self.assertTrue(abbreviate_journals.call_args[1]['use_cassi'])
+        self.assertTrue(abbreviate_bibtex_journals.call_args[1]['use_native'])
+        self.assertTrue(abbreviate_bibtex_journals.call_args[1]['use_cassi'])
 
 
 class LTWATests(TestCase):
@@ -130,3 +131,61 @@ class LTWATests(TestCase):
         # Check a non-existent word
         abbrev = ltwa.find_abbrev_in_df('dance', df)
         self.assertEqual(abbrev, 'dance')
+
+
+class TitlecaseTests(TestCase):
+    def test_titlecase(self):
+        new_title = journals.titlecase('I am not a title')
+        self.assertEqual(new_title, 'I Am Not a Title')
+
+    def test_titlecase_texmacro(self):
+        new_title = journals.titlecase('evaluation of primary particles of \ce{LiMn2O4}')
+        self.assertEqual(new_title, 'Evaluation of Primary Particles of \ce{LiMn2O4}')
+
+    def test_titlecase_newline(self):
+        new_title = journals.titlecase('evaluation of primary\nparticles of \ce{LiMn2O4}')
+        self.assertEqual(new_title, 'Evaluation of Primary Particles of \ce{LiMn2O4}')
+
+
+class FixCurlyBracesTests(TestCase):
+    def test_no_curly_braces(self):
+        entry = {
+            'title': 'A normal title',
+        }
+        journals.fix_curly_braces(entry)
+        self.assertEqual(entry['title'], 'A normal title')
+    
+    def test_bad_curly_braces(self):
+        entry = {
+            'title': '{A normal title}',
+        }
+        journals.fix_curly_braces(entry)
+        self.assertEqual(entry['title'], 'A normal title')
+    
+    def test_normal_curly_braces(self):
+        entry = {
+            'title': 'A {normal} title',
+        }
+        journals.fix_curly_braces(entry)
+        self.assertEqual(entry['title'], 'A {normal} title')
+        
+    def test_deceptive_curly_braces(self):
+        entry = {
+            'title': '{A} normal {title}',
+        }
+        journals.fix_curly_braces(entry)
+        self.assertEqual(entry['title'], '{A} normal {title}')
+    
+    def test_double_deceptive_curly_braces(self):
+        entry = {
+            'title': '{A {normal} title}',
+        }
+        journals.fix_curly_braces(entry)
+        self.assertEqual(entry['title'], 'A {normal} title')
+    
+    def test_bad_ending_curly_braces(self):
+        entry = {
+            'title': '{A normal {title}',
+        }
+        journals.fix_curly_braces(entry)
+        self.assertEqual(entry['title'], 'A normal {title')

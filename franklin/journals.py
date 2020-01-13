@@ -10,6 +10,7 @@ from html.parser import HTMLParser
 import requests
 import bibtexparser
 import tqdm
+from titlecase import titlecase as titlecase_
 
 from . import exceptions
 
@@ -179,7 +180,41 @@ class CassiAbbreviation():
         return abbr
 
 
-def abbreviate_journals(bibfile: str, output: str=None, use_native=True, use_cassi=True, use_ltwa=True):
+@lru_cache()
+def abbreviate_journal(journal, use_native, use_cassi, use_ltwa):
+    # Build a list of which databases to query
+    abbr_dbs = []
+    if use_native:
+        abbr_dbs.append(local_abbreviations)
+    if use_cassi:
+        abbr_dbs.append(CassiAbbreviation())
+    if use_ltwa:
+        abbr_dbs.append(LTWAAbbreviation())
+    # Clean up the journal title a little
+    journal = journal.strip()
+    if journal.lower()[0:3] == 'the':
+        journal = journal[4:]
+        journal = journal.replace(r'\&', '&').replace('{', '').replace('}', '')
+        journal = journal.replace(r'\ ', ' ').replace(r'\n', ' ')
+        # Do the lookup in each database
+    for abbrs in abbr_dbs:
+        try:
+            new_journal = abbrs[journal.lower()]
+        except KeyError:
+            continue
+        except (exceptions.CassiError, requests.exceptions.ConnectionError) as e:
+            log.warning(e)
+        else:
+            break
+    else:
+        log.warning("Could not abbreviate journal '{journal}'.".format(journal=journal))
+        new_journal = journal
+    return new_journal
+
+
+def abbreviate_bibtex_journals(bibfile: str, output: str=None,
+                               fix_titlecase=True, use_native=True,
+                               use_cassi=True, use_ltwa=True):
     """Parse a bibtex file and abbreviate journal titles.
     
     Parameters
@@ -189,6 +224,8 @@ def abbreviate_journals(bibfile: str, output: str=None, use_native=True, use_cas
     output
       The open bibtex file object to receive the parsed bibtex
       content.
+    fix_titlecase
+      Convert article title to proper title-case.
     use_native
       Use the built-in database of journal abbreviations.
     use_cassi
@@ -197,37 +234,21 @@ def abbreviate_journals(bibfile: str, output: str=None, use_native=True, use_cas
       Use the ISSN list of title word abbreviations (LTWA).
     
     """
-    # Build a list of which databases to query
-    abbr_dbs = []
-    if use_native:
-        abbr_dbs.append(local_abbreviations)
-    if use_cassi:
-        abbr_dbs.append(CassiAbbreviation())
-    if use_ltwa:
-        abbr_dbs.append(LTWAAbbreviation())
     olddb = bibtexparser.load(bibfile)
     newdb = bibtexparser.bibdatabase.BibDatabase()
     for entry in tqdm.tqdm(olddb.entries):
+        # Fix any entries with double curly braces
+        fix_curly_braces(entry)
+        # Abbreviate journal titles
         if 'journal' in entry.keys():
-            journal = entry['journal']
-            # Clean up the journal title a little
-            journal = journal.strip()
-            if journal.lower()[0:3] == 'the':
-                journal = journal[4:]
-            journal = journal.replace(r'\&', '&').replace('{', '').replace('}', '')
-            journal = journal.replace(r'\ ', ' ').replace(r'\n', ' ')
-            # Do the lookup in each database
-            for abbrs in abbr_dbs:
-                try:
-                    entry['journal'] = abbrs[journal.lower()]
-                except KeyError:
-                    continue
-                except (exceptions.CassiError, requests.exceptions.ConnectionError) as e:
-                    log.warning(e)
-                else:
-                    break
-            else:
-                log.warning("Could not abbreviate journal '{journal}'.".format(journal=journal))
+            entry['journal'] = abbreviate_journal(entry['journal'], use_native=use_native,
+                                                  use_cassi=use_cassi, use_ltwa=use_ltwa)
+        # Fix the title-case of the journal title
+        title_keys = ['title', 'booktitle']
+        if fix_titlecase:
+            for title_key in title_keys:
+                if title_key in entry.keys():
+                    entry[title_key] = titlecase(entry[title_key])
         newdb.entries.append(entry)
     # Save the updated bibtext database to the new file
     bibtexparser.dump(newdb, output)
@@ -243,6 +264,8 @@ def abbreviate_journals_cli(argv=None):
     parser.add_argument('-o', '--output', help='bibtex input file')
     parser.add_argument('-f', '--force', help='Overwrite existing output file.',
                         action='store_true')
+    parser.add_argument('-t', '--skip-titlecase', dest='fix_titlecase', action='store_false',
+                        help="Don't convert article titles to proper title case.",)
     parser.add_argument('-n', '--no-native', dest='use_native', action='store_false',
                         help='Do not query the native override database.')
     parser.add_argument('-c', '--no-cassi', dest='use_cassi', action='store_false',
@@ -272,8 +295,11 @@ def abbreviate_journals_cli(argv=None):
             "Output file '{output}' already exists. Use `--force` to overwrite.".format(output=output))
     # Call the actual function
     with open(args.bibfile, mode='r') as bibfile, open(output, mode='w') as output:
-        abbreviate_journals(bibfile=bibfile, output=output, use_native=args.use_native,
-                            use_cassi=args.use_cassi, use_ltwa=args.use_ltwa)
+        abbreviate_bibtex_journals(bibfile=bibfile, output=output,
+                                   fix_titlecase=args.fix_titlecase,
+                                   use_native=args.use_native,
+                                   use_cassi=args.use_cassi,
+                                   use_ltwa=args.use_ltwa)
 
 
 class LTWAAbbreviation():
@@ -317,3 +343,43 @@ class LTWAAbbreviation():
             new_title = new_title.replace(acronym.title(), acronym)
         log.info('Abbreviated "{title}" to "{new_title}" by LTWA'.format(title=title, new_title=new_title))
         return new_title
+
+
+def _tex_callback(word, **kwargs):
+    # only lower case words get fixed
+    if not word.islower():
+        return word
+
+
+def titlecase(title):
+    new_title = title.replace('\n', ' ')
+    new_title = titlecase_(new_title, callback=_tex_callback)
+    return new_title
+
+
+curly_braces_re = re.compile(
+    '\{' # The starting (bad) curly brace...
+    '(?![^\{\}]*\}.+)' # ...but only if it's not part of a real curly group
+    '.*' # Regular title characters
+    '\}$' # The losing (bad) curly brace...
+)
+
+
+def fix_curly_braces(entry):
+    """Convert bibtex entries with extra curly braces.
+    
+    > @article{myentry,
+    >   title = {{My title}},
+    > }
+    becomes...
+    > @article{myentry,
+    >   title = {My title},
+    > }
+    
+    """
+    for key, val in entry.items():
+        match = curly_braces_re.match(val)
+        if match:
+            print(val)
+            entry[key] = val[1:-1]
+
