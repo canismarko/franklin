@@ -56,7 +56,6 @@ def existing_ids(doi: str, bib_entries: Iterable) -> List:
       List of the IDs of existing entries with this same DOI.
     
     """
-    import pdb; pdb.set_trace()
     existing_ids = [e.get('ID') for e in bib_entries if e.get('doi', '').lower() == doi.lower()]
     if len(existing_ids) == 0:
         existing_ids = None
