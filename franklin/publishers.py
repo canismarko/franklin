@@ -43,7 +43,8 @@ def load_config():
 def get_publisher(publisher):
     _pub_dict = {
         'American Chemical Society ({ACS})': american_chemical_society,
-        'The Electrochemical Society': electrochemical_society,
+        'The Electrochemical Society': iop,
+        '{IOP}': iop,
         'Elsevier {BV}': elsevier,
         'Springer Science and Business Media {LLC}': springer,
         'Royal Society of Chemistry ({RSC})': royal_society_of_chemistry,
@@ -205,3 +206,15 @@ def ieee(doi, url, *args, **kwargs):
         # Failed, raise a more helpful exception
         raise PDFNotFoundError("No PDF for {}".format(doi))
     return pdf_response.content
+
+
+def iop(doi, *args, **kwargs):
+    pdf_url = f'https://iopscience.iop.org/article/{doi}/pdf'
+    pdf_response = requests.get(pdf_url)
+    # Verify that it's a valid PDF
+    if not re.match('%PDF-([-0-9]+)', pdf_response.text[:8]):
+        # Failed, so figure out why
+        import pdb; pdb.set_trace()
+        raise PDFNotFoundError("No PDF for {}".format(doi))
+    return pdf_response.content
+    

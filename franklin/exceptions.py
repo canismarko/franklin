@@ -12,6 +12,11 @@ class BibtexFileNotFoundError(FileNotFoundError):
     pass
 
 
+class BibtexParseError(RuntimeError):
+    """The bibtex string could not be parsed properly."""
+    pass
+
+
 class CassiError(RuntimeError):
     pass
 

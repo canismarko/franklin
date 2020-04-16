@@ -21,7 +21,7 @@ import logging
 
 import bibtexparser
 
-from .exceptions import DOIError, PDFNotFoundError
+from .exceptions import DOIError, PDFNotFoundError, BibtexParseError
 from .publishers import get_publisher
 
 
@@ -59,7 +59,11 @@ class Article():
     def metadata(self):
         """Retrieve metadata about this article and return as a dictionary."""
         bibtex = self._bibtex()
-        bibdb = bibtexparser.loads(bibtex)
+        try:
+            bibdb = bibtexparser.loads(bibtex)
+        except:
+            msg = "Could not parse bibtex entry: '{}'".format(bibtex)
+            raise BibtexParseError(msg) from None
         if len(bibdb.entries) != 1:
             msg = "Found {} bibtex entries for DOI: '{}'".format(len(bibdb.entries), self.doi)
             raise DOIError(msg)

@@ -37,7 +37,7 @@ class PublisherTests(unittest.TestCase):
     def test_electrochemical_society(self):
         doi = '10.1149/2.0011911jes'
         url = 'http://jes.ecsdl.org/lookup/doi/{}'.format(doi)
-        pdf = publishers.electrochemical_society(doi=doi, url=url)
+        pdf = publishers.iop(doi=doi, url=url)
         pdf_header = pdf[:8]
         self.assertEqual(pdf_header, b'%PDF-1.4')
     
@@ -92,3 +92,9 @@ class PublisherTests(unittest.TestCase):
         pdf = publishers.aaas(doi=doi)
         pdf_header = pdf[:8]
         self.assertEqual(pdf_header, b'%PDF-1.4')
+
+    def test_iop(self):
+        doi = '10.1149/1945-7111/ab6298'
+        pdf = publishers.iop(doi=doi)
+        pdf_header = pdf[:8]
+        self.assertEqual(pdf_header, b'%PDF-1.7')
