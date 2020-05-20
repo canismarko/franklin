@@ -117,8 +117,8 @@ class Article():
     
     def default_id(self):
         """Prepare a default ID suitable for bibtex."""
-        first_author = self.authors()[0]
-        last_name = first_author.split(' ')[-1].lower()
+        lead_author = self.authors()[-1]
+        last_name = lead_author.split(' ')[-1].lower()
         default_id = '{last_name}{year}'.format(last_name=last_name,
                                                 year=self.metadata()['year'])
         return default_id

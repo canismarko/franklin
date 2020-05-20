@@ -56,10 +56,10 @@ class ArticlesTests(unittest.TestCase):
         self.assertEqual(bibdict['publisher'], 'American Chemical Society ({ACS})')
         self.assertEqual(bibdict['journal'], 'Chemistry of Materials')
         self.assertEqual(bibdict['year'], '2017')
-        self.assertEqual(bibdict['ID'], 'wolf2017')
+        self.assertEqual(bibdict['ID'], 'cabana2017')
         # Now try with a custom ID
-        new_bibdict = bibtexparser.loads(article.bibtex(id='cabana2017')).entries[0]
-        self.assertEqual(new_bibdict['ID'], 'cabana2017')
+        new_bibdict = bibtexparser.loads(article.bibtex(id='wolf2017')).entries[0]
+        self.assertEqual(new_bibdict['ID'], 'wolf2017')
     
     def test_metadata(self):
         article = Article(doi=self.perspective_paper_doi)
@@ -75,4 +75,4 @@ class ArticlesTests(unittest.TestCase):
 
     def test_default_id(self):
         article = Article(doi=self.perspective_paper_doi)
-        self.assertEqual(article.default_id(), 'wolf2017')
+        self.assertEqual(article.default_id(), 'cabana2017')
