@@ -30,7 +30,7 @@ log = logging.getLogger(__name__)
 def parse_doi(doi):
     """Validate and extract a digital object identifier."""
     regex = ('(https?://)?((dx\.)?doi.org/)?'
-             '([0-9.]+/[-a-zA-Z0-9._;()/#+<>]+)')
+             '([0-9.]+/[-a-zA-Z0-9._:;()/#+<>]+)')
     match = re.match(regex, doi)
     if match:
         new_doi = match.group(4)

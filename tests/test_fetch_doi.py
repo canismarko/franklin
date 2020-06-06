@@ -156,6 +156,9 @@ class ParseDOITests(TestCase):
     def test_basic_doi(self):
         new_doi = fetch_doi.parse_doi('10.1021/acs.chemmater.6b05114')
         self.assertEqual(new_doi, '10.1021/acs.chemmater.6b05114')
+        # Try one with a colon in the string
+        new_doi = fetch_doi.parse_doi('10.1021/acs.chemmater:6b05114')
+        self.assertEqual(new_doi, '10.1021/acs.chemmater:6b05114')
     
     def test_doi_in_url(self):
         https_url = 'https://dx.doi.org/10.1021/acs.chemmater.6b05114'
@@ -165,3 +168,4 @@ class ParseDOITests(TestCase):
     def test_bad_doi(self):
         with self.assertRaises(exceptions.DOIError):
             fetch_doi.parse_doi('hello')
+
