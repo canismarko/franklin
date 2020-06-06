@@ -131,10 +131,25 @@ class FetchDOITests(TestCase):
             f.write(' ')
         os.mkdir('./papers/')
         try:
-            fetch_doi.main(['10.1021/acs.chemmater.6b05114'])
+            fetch_doi.main(['10.1021/acs.chemmater.6b05114', '--bibtex-id', 'wolfman2017'])
         finally:
             shutil.rmtree('./papers/')
             os.remove('refs.bib')
+
+    def test_bibtex_id(self):
+        """Test that requesting a bibtex_id honors that request."""
+        bibfile = io.StringIO()
+        pdfdir = 'papers/'
+        os.mkdir(pdfdir)
+        requested_id = "wolfman2017"
+        try:
+            new_id = fetch_doi.fetch_doi(doi='10.1021/acs.chemmater.6b05114',
+                                         pdf_dir='papers/',
+                                         bibtex_id=requested_id,
+                                         bibfile=bibfile)
+        finally:
+            shutil.rmtree(pdfdir)
+        self.assertEqual(new_id, requested_id)
 
 
 class ParseDOITests(TestCase):

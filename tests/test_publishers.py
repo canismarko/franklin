@@ -41,6 +41,7 @@ class PublisherTests(unittest.TestCase):
         pdf_header = pdf[:8]
         self.assertEqual(pdf_header, b'%PDF-1.4')
     
+    @unittest.skip("Will be rewritten once Elsevier API is dropped.")
     def test_elsevier(self):
         # doi = '10.1016/j.jpowsour.2008.09.090' # <- not open access
         doi = '10.1016/j.jssc.2019.05.006' # <- open access

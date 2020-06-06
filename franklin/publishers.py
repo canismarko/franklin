@@ -210,11 +210,14 @@ def ieee(doi, url, *args, **kwargs):
 
 def iop(doi, *args, **kwargs):
     pdf_url = f'https://iopscience.iop.org/article/{doi}/pdf'
-    pdf_response = requests.get(pdf_url)
+    pdf_response = requests.get(pdf_url, headers=default_headers)
     # Verify that it's a valid PDF
     if not re.match('%PDF-([-0-9]+)', pdf_response.text[:8]):
         # Failed, so figure out why
-        import pdb; pdb.set_trace()
-        raise PDFNotFoundError("No PDF for {}".format(doi))
+        if "you are a bot" in pdf_response.text:
+            raise PDFNotFoundError("Captcha detected while retrieving PDF for {}. ".format(doi) + 
+                                   "(hint: use `--no-pdf` to skip PDF retrieval)")
+        else:
+            raise PDFNotFoundError("No PDF for {}. (hint: use `--no-pdf` to skip PDF retrieval)".format(doi))
     return pdf_response.content
     

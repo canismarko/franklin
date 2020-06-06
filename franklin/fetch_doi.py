@@ -115,7 +115,7 @@ def add_bibtex_entry(bibtex, bibtexfile):
     bibtexfile.write(bibtex)
 
 
-def fetch_doi(doi, bibfile, pdf_dir, retrieve_pdf=True):
+def fetch_doi(doi, bibfile, pdf_dir, bibtex_id=None, retrieve_pdf=True):
     """Retrieve a document by its Digital object idetifier.
     
     This function will retrieve metadata and optionally the PDF for
@@ -132,6 +132,9 @@ def fetch_doi(doi, bibfile, pdf_dir, retrieve_pdf=True):
       receive the new bibtex entry.
     pdf_dir : str
       Directory in which to put the PDF.
+    bibtex_id : str
+      The requested bibtex ID for this document. Will not necessarily
+      be the one that is used if that ID is already taken.
     retrieve_pdf : bool
       Whether to attempt to download the PDF of the document (default,
       True).
@@ -155,7 +158,8 @@ def fetch_doi(doi, bibfile, pdf_dir, retrieve_pdf=True):
         raise exceptions.DuplicateDOIError(
             "Existing entries found for DOI '{}': {}".format(doi, _existing_ids))
     # Determine a unique ID for this entry/PDF
-    new_id = validate_bibtex_id(base_id=article.default_id(),
+    default_id = bibtex_id if bibtex_id is not None else article.default_id()
+    new_id = validate_bibtex_id(base_id=default_id,
                                 pdfs=os.listdir(pdf_dir),
                                 bibtex_entries=bibdb.entries)
     # Download the PDF
@@ -191,6 +195,8 @@ def main(argv=None):
     parser.add_argument('-b', '--bibtex-file', dest='bibfile', default='./refs.bib',
                         metavar='FILE',
                         help='will add the new bibtex entry to this file')
+    parser.add_argument('-i', '--bibtex-id', dest='bibtex_id', default=None,
+                        help="a default bibtex id, but may be modified if it already exists")
     parser.add_argument('--no-pdf', dest='retrieve_pdf', action='store_false',
                         help="don't attempt to download the article as a PDF")
     parser.add_argument('-d', '--debug', dest='debug', action='store_true',
@@ -209,6 +215,7 @@ def main(argv=None):
     doi = parse_doi(args.doi)
     force = args.force
     bibfile = args.bibfile
+    bibtex_id = args.bibtex_id
     pdf_dir = args.pdf_dir
     retrieve_pdf = args.retrieve_pdf
     # Check if the file exists
@@ -223,7 +230,8 @@ def main(argv=None):
     # Do the actual DOI fetching
     logging.debug("Opening bibfile '%s'", bibfile) 
     with open(bibfile, mode='a+') as bibfp:
-        new_id = fetch_doi(doi=doi, bibfile=bibfp, pdf_dir=pdf_dir, retrieve_pdf=retrieve_pdf)
+        new_id = fetch_doi(doi=doi, bibfile=bibfp, pdf_dir=pdf_dir,
+                           bibtex_id=bibtex_id, retrieve_pdf=retrieve_pdf)
     # Confirm successful retrieval
     msg = "Saved entry as {} ({}.pdf)".format(new_id, os.path.join(pdf_dir, new_id))
     log.info(msg)
