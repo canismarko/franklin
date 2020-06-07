@@ -22,6 +22,7 @@ from typing import List, Iterable
 import bibtexparser
 
 from .article import Article
+from .version import __version__
 from . import exceptions
 
 log = logging.getLogger(__name__)
@@ -203,6 +204,7 @@ def main(argv=None):
                         help="show detailed debug information via the logging platform")
     parser.add_argument('-f', '--force', dest='force', action='store_true',
                         help="force creation of files, directories, etc.")
+    parser.add_argument('-V', '--version', action='version', version='%(prog)s v{}'.format(__version__))
     # Parse the command line arguments
     args = parser.parse_args(argv)
     # Start logging
