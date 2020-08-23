@@ -31,6 +31,7 @@ setup(
         'console_scripts': [
             'fetch-doi=franklin.fetch_doi:main',
             'abbreviate-journals=franklin.journals:abbreviate_journals_cli',
+            'dedupe-notes=franklin.dedupe_notes',
         ],
     },
     classifiers=[
