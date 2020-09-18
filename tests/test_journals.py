@@ -17,6 +17,7 @@
 from unittest import TestCase, mock
 import io
 import os
+import re
 
 import bibtexparser
 import pandas as pd
@@ -118,7 +119,8 @@ class LTWATests(TestCase):
         
     def test_find_abbrev_in_df(self):
         ltwa = journals.LTWAAbbreviation()
-        df = pd.DataFrame([('a-', 'a.', 'en'), ('b-', 'n.a.', 'en'), ('chuck-', 'c.-', 'en')],
+        df = pd.DataFrame([('a-', 'a.', 'en'), ('b-', 'n.a.', 'en'), ('chuck-', 'c.-', 'en'),
+                           ('journal', 'j.', 'fre, eng')],
                           columns=['WORD', 'ABBREVIATIONS', 'LANGUAGE CODES'])
         abbrev = ltwa.find_abbrev_in_df('art', df)
         self.assertEqual(abbrev, 'a.')
@@ -131,6 +133,9 @@ class LTWATests(TestCase):
         # Check a non-existent word
         abbrev = ltwa.find_abbrev_in_df('dance', df)
         self.assertEqual(abbrev, 'dance')
+        # Check a simple non-wildcard match
+        abbrev = ltwa.find_abbrev_in_df('journal', df)
+        self.assertEqual(abbrev, 'j.')
 
 
 class TitlecaseTests(TestCase):

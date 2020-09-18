@@ -21,6 +21,10 @@ class CassiError(RuntimeError):
     pass
 
 
+class MultipleLTWAMatches(RuntimeError):
+    pass
+
+
 class PDFNotFoundError(FileNotFoundError):
     pass
 

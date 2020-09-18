@@ -311,22 +311,49 @@ class LTWAAbbreviation():
         df = pd.read_csv(fp, delimiter='\t')
         return df
     
+    def _validate_df_matches(self, match_df, word):
+        # Make sure only one row was matched
+        if len(match_df) > 1:
+            msg = "Found multiple LTWA matches for word {}: {}"
+            msg = msg.format(word, match_df.WORD)
+            raise exceptions.MultipleLTWAMatches(msg)
+    
     def find_abbrev_in_df(self, word, df):
-        for idx, (word_re, curr_abbrev, lang) in df.iterrows():
-            word_re = word_re.replace('-', '(.*)')
-            match = re.match(word_re, word.lower())
-            # We found the matching entry, so stop looking
-            if match:
-                abbrev = curr_abbrev if curr_abbrev != 'n.a.' else word
-                group_idx = 1
-                while '-' in abbrev:
-                    abbrev = abbrev.replace('-', match.group(group_idx), 1)
-                    group_idx += 1
-                break
+        lword = word.lower()
+        # First check for a non-wildcard match
+        simple_match = df[df.WORD == lword]
+        if len(simple_match == 1):
+            pattern, abbrev, lang = simple_match.iloc[0]
         else:
-            abbrev = word
+            self._validate_df_matches(simple_match, lword)
+            patterns = df.WORD.str.replace('-', '(.*)')
+            matcher = lambda pattern: re.match(f"^{pattern}s?$", lword)
+            matches = patterns.map(matcher)
+            subdf = df.loc[~matches.isnull()]
+            self._validate_df_matches(subdf, lword)
+            # Now do the substitution if a match was found
+            if len(subdf) == 1:
+                pattern, abbrev, lang = subdf.iloc[0]
+                if '-' in abbrev:
+                    # Substitute into the abbreviation
+                    idx = 1
+                    while '-' in abbrev:
+                        abbrev = abbrev.replace('-', f"\\{idx}", 1)
+                        idx += 1
+                    pattern = pattern.replace('-', '(.*)')
+                    abbrev = re.sub(pattern, abbrev, lword)
+            else:
+                # No abbreviation was found
+                abbrev = word
+        # Deal with stray ".s" coming from pluralization
+        if abbrev == "n.a.":
+            # Check for "n.a." abbreviations
+            abbrev = lword
+        if abbrev[-2:] == '.s':
+            abbrev = abbrev[:-1]
         return abbrev
     
+    @lru_cache()
     def __getitem__(self, title):
         ignored_words = ['of', 'the', 'a', '&', 'and']
         df = self.ltwa_list()
