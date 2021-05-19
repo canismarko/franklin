@@ -14,6 +14,7 @@
 # along with Franklin.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
+from pathlib import Path
 import argparse
 import re
 import logging
@@ -23,9 +24,16 @@ import bibtexparser
 
 from .article import Article
 from .version import __version__
+from .config import franklin_config as config
 from . import exceptions
 
 log = logging.getLogger(__name__)
+
+
+config['fetch_doi'] = {
+    'bibtex_file': "./refs.bib",
+    'pdf_dir': "./papers/",
+}
 
 
 def parse_doi(doi):
@@ -190,10 +198,10 @@ def main(argv=None):
     )
     parser.add_argument('doi', type=str,
                         help='the digital object identifier to retrieve')
-    parser.add_argument('-p', '--pdf-dir', dest='pdf_dir', default='./papers/',
+    parser.add_argument('-p', '--pdf-dir', dest='pdf_dir',
                         metavar='PATH',
                         help='where to store the downloaded PDF')
-    parser.add_argument('-b', '--bibtex-file', dest='bibfile', default='./refs.bib',
+    parser.add_argument('-b', '--bibtex-file', dest='bibfile',
                         metavar='FILE',
                         help='will add the new bibtex entry to this file')
     parser.add_argument('-i', '--bibtex-id', dest='bibtex_id', default=None,
@@ -214,12 +222,19 @@ def main(argv=None):
     else:
         level = logging.WARNING
     logging.basicConfig(level=level)
-    doi = parse_doi(args.doi)
+    # Load the franklin rc file if available
+    config.read()
+    # Prepare the metadata from the CLI arguments, etc
     force = args.force
-    bibfile = args.bibfile
+    bibfile = args.bibfile if args.bibfile is not None else config['fetch_doi']['bibtex_file']
+    bibfile = Path(bibfile).expanduser().resolve()
     bibtex_id = args.bibtex_id
-    pdf_dir = args.pdf_dir
+    pdf_dir = args.pdf_dir if args.pdf_dir is not None else config['fetch_doi']['pdf_dir']
+    pdf_dir = Path(pdf_dir).expanduser().resolve()
     retrieve_pdf = args.retrieve_pdf
+    print(bibfile)
+    import sys; sys.exit(0)
+    doi = parse_doi(args.doi)
     # Check if the file exists
     if not os.path.exists(bibfile) and not force:
         raise exceptions.BibtexFileNotFoundError("Cannot find bibtex file: {}".format(bibfile))

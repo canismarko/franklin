@@ -25,7 +25,7 @@ setup(
     packages=['franklin'],
     long_description=read('README.rst'),
     install_requires=[
-        'bibtexparser', 'requests', 'tqdm', 'pandas', 'titlecase',
+        'bibtexparser', 'requests', 'tqdm', 'pandas', 'titlecase', 'orgparse',
     ],
     entry_points = {
         'console_scripts': [

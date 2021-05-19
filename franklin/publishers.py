@@ -21,6 +21,7 @@ import os
 import configparser
 
 from .exceptions import PDFNotFoundError, UnknownPublisherError, ConfigError
+from .config import franklin_config as config
 from . import __version__
 
 
@@ -29,15 +30,10 @@ default_headers = {
 }
 
 
-def load_config():
-    """Load the configuration file from disk."""
-    config = configparser.ConfigParser()
-    config['Elsevier'] = {
-        'api_key': '',
-    }
-    # Read the file from disk
-    config.read(os.path.expanduser('~/.franklinrc'))
-    return config
+# Prepare default global configuration values
+config['Elsevier'] = {
+    'api_key': '',
+}
 
 
 def get_publisher(publisher):
@@ -108,7 +104,7 @@ def electrochemical_society(doi, *args, **kwargs):
 def elsevier(doi, api_key=None, *args, **kwargs):
     # Make sure the API key is set
     if api_key is None:
-        api_key = load_config()['Elsevier']['api_key']
+        api_key = config.read()['Elsevier']['api_key']
     # Prepare the API request
     api_url = "https://api.elsevier.com/content/article/doi/{doi}?"
     if api_key:
