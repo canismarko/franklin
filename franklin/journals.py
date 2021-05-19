@@ -123,7 +123,6 @@ class CassiAbbreviation():
         if len(matched_journals) == 0:
             raise KeyError("Could not find CASSI entry for '{journal}'.".format(journal=journal))
         if len(matched_journals) > 1:
-            print(parser.journals)
             raise exceptions.CassiError("Found {num} CASSI entries for "
                                         "'{journal}'.".format(num=len(matched_journals), journal=journal))
         else:
@@ -213,8 +212,9 @@ def abbreviate_journal(journal, use_native, use_cassi, use_ltwa):
 
 
 def abbreviate_bibtex_journals(bibfile: str, output: str=None,
-                               fix_titlecase=True, use_native=True,
-                               use_cassi=True, use_ltwa=True):
+                               latex_aux_files=[], fix_titlecase=True,
+                               use_native=True, use_cassi=True,
+                               use_ltwa=True):
     """Parse a bibtex file and abbreviate journal titles.
     
     Parameters
@@ -224,6 +224,10 @@ def abbreviate_bibtex_journals(bibfile: str, output: str=None,
     output
       The open bibtex file object to receive the parsed bibtex
       content.
+    latex_aux_files
+      Sequence of open file objects with LaTeX .aux files. If
+      provided, only entries cited in these aux files will be
+      abbreviated.
     fix_titlecase
       Convert article title to proper title-case.
     use_native
@@ -232,11 +236,21 @@ def abbreviate_bibtex_journals(bibfile: str, output: str=None,
       Use the ACS CASSI database of journal abbreviations.
     use_ltwa
       Use the ISSN list of title word abbreviations (LTWA).
-    
+
     """
     olddb = bibtexparser.load(bibfile)
     newdb = bibtexparser.bibdatabase.BibDatabase()
-    for entry in tqdm.tqdm(olddb.entries):
+    # Parse the LaTeX .aux files
+    aux_refs = []
+    for texfile in latex_aux_files:
+        # aux_refs.extend([l[10:-1] for l in texfile.readlines() if l[:10] == r"\citation{"])
+        aux_refs.extend([l.strip()[10:-1] for l in texfile.readlines() if l.strip()[:10] == r"\citation{"])
+    aux_refs = set(aux_refs)
+    if len(aux_refs) > 0:
+        old_entries = [e for e in olddb.entries if e['ID'] in aux_refs]
+    else:
+        old_entries = olddb.entries
+    for entry in tqdm.tqdm(old_entries):
         # Fix any entries with double curly braces
         fix_curly_braces(entry)
         # Abbreviate journal titles
@@ -258,10 +272,11 @@ def abbreviate_journals_cli(argv=None):
     # Parse the arguments
     parser = argparse.ArgumentParser(description='Abbreviate journal titles in a Bibtex file.')
     parser.add_argument('bibfile', help='bibtex input file')
+    parser.add_argument('-o', '--output', help='bibtex output file')
+    parser.add_argument('-L', '--latex-aux-file', action='append', help="LaTex .aux file. Only citations found in this file will be output.", dest="latex_aux_files", metavar="FILE")
     parser.add_argument('-d', '--debug', action='store_true', help='Very verbose logging output')
     parser.add_argument('-v', '--verbose', action='store_true', help='Verbose logging output')
     parser.add_argument('-q', '--quiet', action='store_true', help='Suppress logging output')
-    parser.add_argument('-o', '--output', help='bibtex input file')
     parser.add_argument('-f', '--force', help='Overwrite existing output file.',
                         action='store_true')
     parser.add_argument('-t', '--skip-titlecase', dest='fix_titlecase', action='store_false',
@@ -293,21 +308,30 @@ def abbreviate_journals_cli(argv=None):
     if os.path.exists(output) and not args.force:
         raise exceptions.FileExistsError(
             "Output file '{output}' already exists. Use `--force` to overwrite.".format(output=output))
+    # Open any additional latex aux files
+    latex_aux_files = args.latex_aux_files if args.latex_aux_files is not None else []
+    latex_aux_files = [open(fp, mode='r') for fp in latex_aux_files]
     # Call the actual function
     with open(args.bibfile, mode='r') as bibfile, open(output, mode='w') as output:
-        abbreviate_bibtex_journals(bibfile=bibfile, output=output,
-                                   fix_titlecase=args.fix_titlecase,
-                                   use_native=args.use_native,
-                                   use_cassi=args.use_cassi,
-                                   use_ltwa=args.use_ltwa)
-
+        try:
+            abbreviate_bibtex_journals(bibfile=bibfile, output=output,
+                                       fix_titlecase=args.fix_titlecase,
+                                       latex_aux_files=latex_aux_files,
+                                       use_native=args.use_native,
+                                       use_cassi=args.use_cassi,
+                                       use_ltwa=args.use_ltwa)
+        except:
+            [fp.close() for fp in latex_aux_files]
+            raise
 
 class LTWAAbbreviation():
     ltwa_url = 'https://www.issn.org/wp-content/uploads/2013/09/LTWA_20160915.txt'
     
     @lru_cache()
     def ltwa_list(self):
-        fp = io.StringIO(requests.get(self.ltwa_url).text)
+        response = requests.get(self.ltwa_url)
+        response.encoding = 'utf-16'
+        fp = io.StringIO(response.text)
         df = pd.read_csv(fp, delimiter='\t')
         return df
     
@@ -407,6 +431,4 @@ def fix_curly_braces(entry):
     for key, val in entry.items():
         match = curly_braces_re.match(val)
         if match:
-            print(val)
             entry[key] = val[1:-1]
-

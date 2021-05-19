@@ -35,6 +35,14 @@ class JournalTests(TestCase):
         "volume = {-1},"
         "note = {to appear},"
         "}"
+        "@article{irrelevant,"
+        "author = {Freely, I.P.},"
+        "title = {Shrimp Racing Stats},"
+        "journal = {The journal of pointless science},"
+        "year = 1950,"
+        "volume = {-1},"
+        "note = {to appear},"
+        "}"        
     )
     
     def test_no_abbreviate_journal(self):
@@ -64,7 +72,22 @@ class JournalTests(TestCase):
         # Check that the output
         out_file.seek(0)
         bibdb = bibtexparser.load(out_file)
-        self.assertEqual(bibdb.entries[0]['journal'], 'J. Sm. Papers')
+        self.assertEqual(bibdb.entries[1]['journal'], 'J. Sm. Papers')
+
+    def test_latex_aux_file(self):
+        bibfile = io.StringIO(self.bib_in)
+        out_file = io.StringIO()
+        latex_aux_files = [io.StringIO("\citation{small}")]
+        journals.abbreviate_bibtex_journals(bibfile=bibfile,
+                                            output=out_file,
+                                            latex_aux_files=latex_aux_files,
+                                            use_native=True,
+                                            use_cassi=False,
+                                            use_ltwa=False)
+        out_file.seek(0)
+        bibdb = bibtexparser.load(out_file)
+        bad_article_in_list = len([e for e in bibdb.entries if e['ID'] == 'irrelevant']) > 0
+        self.assertFalse(bad_article_in_list, "'irrelevant' article found in list.")
     
     def test_cassi_single_hit(self):
         """Test what happens if only one journal returns a match."""
@@ -85,6 +108,7 @@ class JournalTests(TestCase):
         # self.assertEqual(response, 'Appl. Radiat. Isot.')
         response = cassi['Science in China, Series A: Mathematics, Physics, Astronomy & Technological Sciences']
         self.assertEqual(response, 'Sci. China, Ser. A: Math., Phys., Astron. Technol. Sci.')
+       
     
     def tearDown(self):
         if os.path.exists('test-file-abbrev.bib'):
@@ -101,6 +125,14 @@ class JournalTests(TestCase):
 
 
 class LTWATests(TestCase):
+
+    def test_ltwa_list(self):
+        ltwa = journals.LTWAAbbreviation()
+        df = ltwa.ltwa_list()
+        self.assertEqual(df.columns[0], 'WORD')
+        self.assertEqual(df.columns[1], 'ABBREVIATIONS')
+        self.assertEqual(df.columns[2], 'LANGUAGE CODES')
+    
     def test_no_abbreviations(self):
         ltwa = journals.LTWAAbbreviation()
         abbr = ltwa['SPIE Newsroom']
@@ -115,8 +147,7 @@ class LTWATests(TestCase):
         for (journal, real_abbr) in valid_abbrs.items():
             abbr = ltwa[journal]
             self.assertEqual(abbr, real_abbr)
-            
-        
+    
     def test_find_abbrev_in_df(self):
         ltwa = journals.LTWAAbbreviation()
         df = pd.DataFrame([('a-', 'a.', 'en'), ('b-', 'n.a.', 'en'), ('chuck-', 'c.-', 'en'),
