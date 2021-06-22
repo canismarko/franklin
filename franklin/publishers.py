@@ -104,7 +104,7 @@ def electrochemical_society(doi, *args, **kwargs):
 def elsevier(doi, api_key=None, *args, **kwargs):
     # Make sure the API key is set
     if api_key is None:
-        api_key = config.read()['Elsevier']['api_key']
+        api_key = config['Elsevier']['api_key']
     # Prepare the API request
     api_url = "https://api.elsevier.com/content/article/doi/{doi}?"
     if api_key:

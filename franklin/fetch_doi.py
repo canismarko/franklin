@@ -232,8 +232,6 @@ def main(argv=None):
     pdf_dir = args.pdf_dir if args.pdf_dir is not None else config['fetch_doi']['pdf_dir']
     pdf_dir = Path(pdf_dir).expanduser().resolve()
     retrieve_pdf = args.retrieve_pdf
-    print(bibfile)
-    import sys; sys.exit(0)
     doi = parse_doi(args.doi)
     # Check if the file exists
     if not os.path.exists(bibfile) and not force:
