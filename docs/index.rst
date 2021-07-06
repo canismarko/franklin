@@ -87,6 +87,13 @@ abbreviation directly the the ISSN list of title word abbreviations
 and not well tested. This option can be disabled with the
 ``--no-ltwa`` option.
 
+If the generated bibtex file will be used in an existing LaTeX
+document, it may make sense to **limit the bibtex entries to only
+those cited in the document.** This can be done using the
+``--latex-aux-file`` (``-L``) argument and providing one or more
+``.aux`` files generated from a ``.tex`` document..
+
+
 Indices and tables
 ==================
 
