@@ -214,7 +214,7 @@ def abbreviate_journal(journal, use_native, use_cassi, use_ltwa):
 def abbreviate_bibtex_journals(bibfile: str, output: str=None,
                                latex_aux_files=[], fix_titlecase=True,
                                use_native=True, use_cassi=True,
-                               use_ltwa=True):
+                               use_ltwa=True, skip_bibtex_fields=[]):
     """Parse a bibtex file and abbreviate journal titles.
     
     Parameters
@@ -236,6 +236,8 @@ def abbreviate_bibtex_journals(bibfile: str, output: str=None,
       Use the ACS CASSI database of journal abbreviations.
     use_ltwa
       Use the ISSN list of title word abbreviations (LTWA).
+    skip_bibtex_fields
+      These fields will not be included in the output file.
 
     """
     olddb = bibtexparser.load(bibfile)
@@ -263,6 +265,10 @@ def abbreviate_bibtex_journals(bibfile: str, output: str=None,
             for title_key in title_keys:
                 if title_key in entry.keys():
                     entry[title_key] = titlecase(entry[title_key])
+        # Remove unwanted bibtex fields
+        for field in skip_bibtex_fields:
+            entry.pop(field, None)
+        # Save for later writing to disk
         newdb.entries.append(entry)
     # Save the updated bibtext database to the new file
     bibtexparser.dump(newdb, output)
@@ -281,6 +287,7 @@ def abbreviate_journals_cli(argv=None):
                         action='store_true')
     parser.add_argument('-t', '--skip-titlecase', dest='fix_titlecase', action='store_false',
                         help="Don't convert article titles to proper title case.",)
+    parser.add_argument('-s', '--skip-field', dest="skip_fields", metavar="FIELD", action="append")
     parser.add_argument('-n', '--no-native', dest='use_native', action='store_false',
                         help='Do not query the native override database.')
     parser.add_argument('-c', '--no-cassi', dest='use_cassi', action='store_false',
@@ -319,7 +326,8 @@ def abbreviate_journals_cli(argv=None):
                                        latex_aux_files=latex_aux_files,
                                        use_native=args.use_native,
                                        use_cassi=args.use_cassi,
-                                       use_ltwa=args.use_ltwa)
+                                       use_ltwa=args.use_ltwa,
+                                       skip_bibtex_fields=args.skip_fields)
         except:
             [fp.close() for fp in latex_aux_files]
             raise
@@ -335,13 +343,6 @@ class LTWAAbbreviation():
         df = pd.read_csv(fp, delimiter='\t')
         return df
     
-    def _validate_df_matches(self, match_df, word):
-        # Make sure only one row was matched
-        if len(match_df) > 1:
-            msg = "Found multiple LTWA matches for word {}: {}"
-            msg = msg.format(word, match_df.WORD)
-            raise exceptions.MultipleLTWAMatches(msg)
-    
     def find_abbrev_in_df(self, word, df):
         lword = word.lower()
         # First check for a non-wildcard match
@@ -349,15 +350,20 @@ class LTWAAbbreviation():
         if len(simple_match == 1):
             pattern, abbrev, lang = simple_match.iloc[0]
         else:
-            self._validate_df_matches(simple_match, lword)
             patterns = df.WORD.str.replace('-', '(.*)')
-            matcher = lambda pattern: re.match(f"^{pattern}s?$", lword)
+            
+            def matcher(pattern):
+                return re.match(f"^{pattern}s?$", lword)
+            
             matches = patterns.map(matcher)
             subdf = df.loc[~matches.isnull()]
-            self._validate_df_matches(subdf, lword)
             # Now do the substitution if a match was found
-            if len(subdf) == 1:
-                pattern, abbrev, lang = subdf.iloc[0]
+            if len(subdf) == 0:
+                # No match so just leave it as it is
+                abbrev = word
+            else:
+                abbrev = lword
+            for idx, (pattern, abbrev, lang) in subdf.iterrows():
                 if '-' in abbrev:
                     # Substitute into the abbreviation
                     idx = 1
@@ -366,9 +372,6 @@ class LTWAAbbreviation():
                         idx += 1
                     pattern = pattern.replace('-', '(.*)')
                     abbrev = re.sub(pattern, abbrev, lword)
-            else:
-                # No abbreviation was found
-                abbrev = word
         # Deal with stray ".s" coming from pluralization
         if abbrev == "n.a.":
             # Check for "n.a." abbreviations
