@@ -23,6 +23,7 @@ import bibtexparser
 
 from .exceptions import DOIError, PDFNotFoundError, BibtexParseError
 from .publishers import get_publisher
+from .version import __version__
 
 
 log = logging.getLogger(__name__)
@@ -52,8 +53,20 @@ class Article():
         """Load the raw bibtex from DOI server."""
         headers = {
             'Accept': 'application/x-bibtex',
+            'User-Agent': f'franklin/{__version__}',
         }
-        bibtex = requests.get('https://dx.doi.org/{doi}'.format(doi=self.doi), headers=headers)
+        timeout_options = [1, 2, 3]
+        for idx, timeout in enumerate(timeout_options):
+            url = 'https://dx.doi.org/{doi}'.format(doi=self.doi)
+            log.debug("Attempt %d/%d to retrieve bibtex from %s", idx, len(timeout_options), url)
+            bibtex = requests.get(url, headers=headers, timeout=timeout)
+            if bibtex.status_code == 200:
+                log.info("Retrieved bibtex for %s", self.doi)
+                break
+            else:
+                log.debug("Failed attempt %d/%d to retrieve bibtex from %s", idx, len(timeout_options), url)
+        if bibtex.status_code != 200:
+            raise exceptions.BibtexNotDownloaded(bibtex.status_code)
         return bibtex.text
     
     def metadata(self):

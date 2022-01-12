@@ -3,6 +3,11 @@ class DOIError(RuntimeError):
     pass
 
 
+class BibtexNotDownloaded(RuntimeError):
+    """Tried to download bibtex from DOI but was unsuccessful."""
+    pass
+
+
 class DuplicateDOIError(RuntimeError):
     """Trying to add a new bibtex entry when the file already contains this DOI."""
     pass
