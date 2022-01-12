@@ -245,8 +245,12 @@ def abbreviate_bibtex_journals(bibfile: str, output: str=None,
     # Parse the LaTeX .aux files
     aux_refs = []
     for texfile in latex_aux_files:
-        # aux_refs.extend([l[10:-1] for l in texfile.readlines() if l[:10] == r"\citation{"])
+        # Bibtex...
         aux_refs.extend([l.strip()[10:-1] for l in texfile.readlines() if l.strip()[:10] == r"\citation{"])
+        texfile.seek(0)
+        # Biblatex
+        aux_refs.extend([l.strip()[14:-1] for l in texfile.readlines() if l.strip()[:14] == r"\abx@aux@cite{"])
+        texfile.seek(0)
     aux_refs = set(aux_refs)
     if len(aux_refs) > 0:
         old_entries = [e for e in olddb.entries if e['ID'] in aux_refs]
@@ -319,6 +323,7 @@ def abbreviate_journals_cli(argv=None):
     latex_aux_files = args.latex_aux_files if args.latex_aux_files is not None else []
     latex_aux_files = [open(fp, mode='r') for fp in latex_aux_files]
     # Call the actual function
+    skip_fields = args.skip_fields if args.skip_fields is not None else []
     with open(args.bibfile, mode='r') as bibfile, open(output, mode='w') as output:
         try:
             abbreviate_bibtex_journals(bibfile=bibfile, output=output,
@@ -327,10 +332,11 @@ def abbreviate_journals_cli(argv=None):
                                        use_native=args.use_native,
                                        use_cassi=args.use_cassi,
                                        use_ltwa=args.use_ltwa,
-                                       skip_bibtex_fields=args.skip_fields)
+                                       skip_bibtex_fields=skip_fields)
         except:
-            [fp.close() for fp in latex_aux_files]
             raise
+        finally:
+            [fp.close() for fp in latex_aux_files]
 
 class LTWAAbbreviation():
     ltwa_url = 'https://www.issn.org/wp-content/uploads/2013/09/LTWA_20160915.txt'
