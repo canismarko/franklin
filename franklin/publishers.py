@@ -72,10 +72,18 @@ def aaas(doi, *args, **kwargs):
     # Go resolve the url to extract the AAAS article ID
     html_url = 'https://www.sciencemag.org/lookup/doi/{}'.format(doi)
     response = requests.options(html_url)
+    # Determine the URL of the article PDF
     article_re = re.match('https?://[a-z.]+/content/([0-9/]+)', response.url)
-    article_id = article_re.group(1)
-    # Get the PDF of the article
-    pdf_url = "https://science.sciencemag.org/content/{id}.full.pdf".format(id=article_id)
+    if article_re:
+        # Old style
+        article_id = article_re.group(1)
+        pdf_url = "https://science.sciencemag.org/content/{id}.full.pdf".format(id=article_id)
+    else:
+        # New style, directly from the DOI
+        pdf_url = "https://www.science.org/doi/pdf/{doi}?download=true".format(doi=doi)
+        # AAAS is too restrictive, maybe use sci-hub in the future?
+        raise PDFNotFoundError("No PDF for {}".format(doi))
+    # Retrieve the PDF
     pdf_response = requests.get(pdf_url, headers=default_headers)
     # Verify that it's a valid PDF
     if not re.match('%PDF-([-0-9]+)', pdf_response.text[:8]):
@@ -83,7 +91,6 @@ def aaas(doi, *args, **kwargs):
         if "Missing resource" in pdf_response.text:
             raise PDFNotFoundError("No PDF for {}".format(doi))
     return pdf_response.content
-
 
 
 def electrochemical_society(doi, *args, **kwargs):

@@ -21,7 +21,7 @@ import logging
 
 import bibtexparser
 
-from .exceptions import DOIError, PDFNotFoundError, BibtexParseError
+from .exceptions import DOIError, PDFNotFoundError, BibtexParseError, BibtexNotDownloaded
 from .publishers import get_publisher
 from .version import __version__
 
@@ -66,7 +66,8 @@ class Article():
             else:
                 log.debug("Failed attempt %d/%d to retrieve bibtex from %s", idx, len(timeout_options), url)
         if bibtex.status_code != 200:
-            raise exceptions.BibtexNotDownloaded(bibtex.status_code)
+            import pdb; pdb.set_trace()
+            raise BibtexNotDownloaded(bibtex.status_code)
         return bibtex.text
     
     def metadata(self):
@@ -131,7 +132,7 @@ class Article():
     def default_id(self):
         """Prepare a default ID suitable for bibtex."""
         lead_author = self.authors()[-1]
-        last_name = lead_author.split(' ')[-1].lower()
+        last_name = lead_author.split(',')[0].lower()
         default_id = '{last_name}{year}'.format(last_name=last_name,
                                                 year=self.metadata()['year'])
         return default_id
