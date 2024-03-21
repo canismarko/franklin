@@ -13,12 +13,13 @@
 # You should have received a copy of the GNU General Public License
 # along with Franklin.  If not, see <https://www.gnu.org/licenses/>.
 
-
+from pathlib import Path
 from unittest import TestCase
 import io
 import os
 import shutil
 
+import pytest
 from franklin import fetch_doi, exceptions
 
 
@@ -105,51 +106,61 @@ class AddBibtexEntryTests(TestCase):
         self.assertEqual(secondline.strip(), '@article{wolf2017,')
 
 
-class FetchDOITests(TestCase):
-    def test_fetch_doi(self):
-        bibfile = io.StringIO()
-        pdfdir = 'papers/'
-        os.mkdir(pdfdir)
-        try:
-            fetch_doi.fetch_doi(doi='10.1021/acs.chemmater.6b05114',
-                                pdf_dir='papers/',
-                                bibfile=bibfile)
-        finally:
-            shutil.rmtree(pdfdir)
+def test_fetch_doi():
+    bibfile = io.StringIO()
+    pdfdir = 'papers/'
+    os.mkdir(pdfdir)
+    try:
+        fetch_doi.fetch_doi(doi='10.1021/acs.chemmater.6b05114',
+                            pdf_dir='papers/',
+                            bibfile=bibfile)
+    finally:
+        shutil.rmtree(pdfdir)
             
-    def test_duplicate_doi(self):
-        bibfile = io.StringIO('@article{wolf2017,'
-                              '  doi={10.1021/acs.chemmater.6b05114},'
-                              '}')
-        with self.assertRaises(exceptions.DuplicateDOIError):
-            fetch_doi.fetch_doi(doi='10.1021/acs.chemmater.6b05114',
-                                pdf_dir='papers/',
-                                bibfile=bibfile)
-    
-    def test_main(self):
-        with open('refs.bib', 'w+') as f:
-            f.write(' ')
-        os.mkdir('./papers/')
-        try:
-            fetch_doi.main(['10.1021/acs.chemmater.6b05114', '--bibtex-id', 'wolfman2017'])
-        finally:
-            shutil.rmtree('./papers/')
-            os.remove('refs.bib')
+def test_duplicate_doi():
+    bibfile = io.StringIO('@article{wolf2017,'
+                          '  doi={10.1021/acs.chemmater.6b05114},'
+                          '}')
+    with pytest.raises(exceptions.DuplicateDOIError):
+        fetch_doi.fetch_doi(doi='10.1021/acs.chemmater.6b05114',
+                            pdf_dir='papers/',
+                            bibfile=bibfile)
 
-    def test_bibtex_id(self):
-        """Test that requesting a bibtex_id honors that request."""
-        bibfile = io.StringIO()
-        pdfdir = 'papers/'
-        os.mkdir(pdfdir)
-        requested_id = "wolfman2017"
-        try:
-            new_id = fetch_doi.fetch_doi(doi='10.1021/acs.chemmater.6b05114',
-                                         pdf_dir='papers/',
-                                         bibtex_id=requested_id,
-                                         bibfile=bibfile)
-        finally:
-            shutil.rmtree(pdfdir)
-        self.assertEqual(new_id, requested_id)
+
+@pytest.fixture()
+def bibtex_file():
+    bibpath = Path(__file__).parent / "refs.bib"
+    paper_path = bibpath.parent / "papers"
+    # Make sure the bibtex file is available
+    assert not bibpath.exists()
+    with open(bibpath, mode='w') as fd:
+        fd.write(' ')
+    paper_path.mkdir(parents=True, exist_ok=False)
+    # Let the test run
+    try:
+        yield bibpath
+    finally:
+        bibpath.unlink()
+        paper_path.rmdir()
+
+
+def test_main(bibtex_file):
+    fetch_doi.main(['10.1021/acs.chemmater.6b05114', '--bibtex-id', 'wolfman2017', "--bibtex-file", str(bibtex_file)])
+
+def test_bibtex_id():
+    """Test that requesting a bibtex_id honors that request."""
+    bibfile = io.StringIO()
+    pdfdir = 'papers/'
+    os.mkdir(pdfdir)
+    requested_id = "wolfman2017"
+    try:
+        new_id = fetch_doi.fetch_doi(doi='10.1021/acs.chemmater.6b05114',
+                                     pdf_dir='papers/',
+                                     bibtex_id=requested_id,
+                                     bibfile=bibfile)
+    finally:
+        shutil.rmtree(pdfdir)
+    assert new_id == requested_id
 
 
 class ParseDOITests(TestCase):
