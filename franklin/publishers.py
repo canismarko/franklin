@@ -39,6 +39,7 @@ config['Elsevier'] = {
 def get_publisher(publisher):
     _pub_dict = {
         'American Chemical Society ({ACS})': american_chemical_society,
+        'American Chemical Society (ACS)': american_chemical_society,
         'The Electrochemical Society': iop,
         '{IOP}': iop,
         'Elsevier {BV}': elsevier,

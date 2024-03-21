@@ -41,7 +41,7 @@ class ArticlesTests(unittest.TestCase):
         pdf = article.download_pdf(fp=output_fp)
         # Check that a valid PDF was returned
         output_fp.seek(0)
-        self.assertEqual(output_fp.read(8).decode(), '%PDF-1.5')
+        self.assertEqual(output_fp.read(8).decode(), '%PDF-1.6')
         # Clean up
         output_fp.close()
     
@@ -52,14 +52,14 @@ class ArticlesTests(unittest.TestCase):
         self.assertEqual(len(bibtex.entries), 1)
         bibdict = bibtex.entries[0]
         self.assertEqual(bibdict['doi'], self.perspective_paper_doi)
-        self.assertEqual(bibdict['author'], 'Mark Wolf and Brian M. May and Jordi Cabana')
-        self.assertEqual(bibdict['publisher'], 'American Chemical Society ({ACS})')
+        self.assertEqual(bibdict['author'], 'Wolfman, Mark and May, Brian M. and Cabana, Jordi')
+        self.assertEqual(bibdict['publisher'], 'American Chemical Society (ACS)')
         self.assertEqual(bibdict['journal'], 'Chemistry of Materials')
         self.assertEqual(bibdict['year'], '2017')
         self.assertEqual(bibdict['ID'], 'cabana2017')
         # Now try with a custom ID
-        new_bibdict = bibtexparser.loads(article.bibtex(id='wolf2017')).entries[0]
-        self.assertEqual(new_bibdict['ID'], 'wolf2017')
+        new_bibdict = bibtexparser.loads(article.bibtex(id='wolfman2017')).entries[0]
+        self.assertEqual(new_bibdict['ID'], 'wolfman2017')
     
     def test_metadata(self):
         article = Article(doi=self.perspective_paper_doi)
@@ -69,9 +69,9 @@ class ArticlesTests(unittest.TestCase):
     
     def test_author(self):
         article = Article(doi=self.perspective_paper_doi)
-        self.assertEqual(article.authors()[0], 'Mark Wolf')
-        self.assertEqual(article.authors()[1], 'Brian M. May')
-        self.assertEqual(article.authors()[2], 'Jordi Cabana')
+        self.assertEqual(article.authors()[0], 'Wolfman, Mark')
+        self.assertEqual(article.authors()[1], 'May, Brian M.')
+        self.assertEqual(article.authors()[2], 'Cabana, Jordi')
 
     def test_default_id(self):
         article = Article(doi=self.perspective_paper_doi)
